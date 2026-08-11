@@ -1,0 +1,47 @@
+// 全局 Gradle init 脚本 - 将所有国外仓库替换为阿里云镜像
+// 使用方法: 将此文件复制到 GRADLE_USER_HOME/init.d/ 目录下
+
+allprojects {
+    buildscript {
+        repositories {
+            maven { url = uri("https://maven.aliyun.com/repository/public") }
+            maven { url = uri("https://maven.aliyun.com/repository/google") }
+            maven { url = uri("https://maven.aliyun.com/repository/central") }
+            maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        }
+    }
+    repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/central") }
+        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+    }
+}
+
+// 强制替换所有 Maven 仓库 URL 为阿里云镜像
+allprojects {
+    repositories.all { repo ->
+        if (repo.metaClass.respondsTo(repo, "getUrl")) {
+            def url = repo.url.toString()
+            if (url.contains("repo.maven.apache.org") || url.contains("repo1.maven.org")) {
+                repo.url = "https://maven.aliyun.com/repository/central"
+            } else if (url.contains("dl.google.com") || url.contains("maven.google.com")) {
+                repo.url = "https://maven.aliyun.com/repository/google"
+            } else if (url.contains("plugins.gradle.org")) {
+                repo.url = "https://maven.aliyun.com/repository/gradle-plugin"
+            }
+        }
+    }
+    buildscript.repositories.all { repo ->
+        if (repo.metaClass.respondsTo(repo, "getUrl")) {
+            def url = repo.url.toString()
+            if (url.contains("repo.maven.apache.org") || url.contains("repo1.maven.org")) {
+                repo.url = "https://maven.aliyun.com/repository/central"
+            } else if (url.contains("dl.google.com") || url.contains("maven.google.com")) {
+                repo.url = "https://maven.aliyun.com/repository/google"
+            } else if (url.contains("plugins.gradle.org")) {
+                repo.url = "https://maven.aliyun.com/repository/gradle-plugin"
+            }
+        }
+    }
+}
