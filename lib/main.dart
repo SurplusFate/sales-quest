@@ -14,8 +14,10 @@ class SalesQuestApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 启动时确保今日任务已创建
-    ref.watch(dailyTaskServiceProvider).ensureTodayTasks();
+    // 启动时确保今日任务已创建 (异步执行，不阻塞 UI)
+    ref.watch(dailyTaskServiceProvider).ensureTodayTasks().catchError((e) {
+      debugPrint('ensureTodayTasks error: $e');
+    });
 
     return MaterialApp.router(
       title: 'Sales Quest',
@@ -23,6 +25,11 @@ class SalesQuestApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       routerConfig: AppRouter.build(),
+      builder: (context, child) {
+        // 全局错误边界: 防止子树异常导致白屏
+        if (child == null) return const SizedBox.shrink();
+        return child;
+      },
     );
   }
 }

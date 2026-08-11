@@ -21,6 +21,26 @@ class AppRouter {
     return GoRouter(
       navigatorKey: _rootKey,
       initialLocation: '/',
+      errorBuilder: (context, state) => Scaffold(
+        appBar: AppBar(title: const Text('页面未找到')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text('路由: ${state.uri}'),
+              const SizedBox(height: 8),
+              Text('${state.error ?? "未知错误"}'),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () => context.go('/'),
+                child: const Text('返回首页'),
+              ),
+            ],
+          ),
+        ),
+      ),
       routes: [
         ShellRoute(
           navigatorKey: _shellKey,
