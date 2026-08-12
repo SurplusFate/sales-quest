@@ -309,7 +309,7 @@ class _LogCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      entry.level.label,
+                      entry.levelLabel,
                       style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold),
                     ),
                   ),

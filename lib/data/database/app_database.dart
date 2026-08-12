@@ -1,11 +1,8 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../../core/app_logger.dart';
+import 'database_connection_native.dart'
+    if (dart.library.html) 'database_connection_web.dart';
 import 'tables.dart';
 import 'daos/customer_dao.dart';
 import 'daos/event_dao.dart';
@@ -41,7 +38,7 @@ part 'app_database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_open());
+  AppDatabase() : super(openConnection());
 
   AppDatabase.forTesting(super.e);
 
@@ -51,35 +48,16 @@ class AppDatabase extends _$AppDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
+          AppLogger.instance.info('Database', 'onCreate: 创建所有表');
           await m.createAll();
           // 初始化用户统计记录
           await into(userStats).insert(
             UserStatsCompanion.insert(id: const Value('default')),
           );
+          AppLogger.instance.info('Database', 'onCreate: 完成');
+        },
+        beforeOpen: (details) async {
+          AppLogger.instance.info('Database', 'beforeOpen: 已连接');
         },
       );
-}
-
-LazyDatabase _open() {
-  return LazyDatabase(() async {
-    AppLogger.instance.info('Database', '开始打开数据库...');
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      AppLogger.instance.info('Database', '文档目录: ${dir.path}');
-      final file = File(p.join(dir.path, 'sales_quest.db'));
-      AppLogger.instance.info('Database', '数据库文件路径: ${file.path}');
-      AppLogger.instance.info('Database', '文件是否存在: ${await file.exists()}');
-      final db = NativeDatabase.createInBackground(file);
-      AppLogger.instance.info('Database', '数据库已创建');
-      return db;
-    } catch (e, st) {
-      AppLogger.instance.fatal(
-        'Database',
-        '数据库打开失败: $e',
-        error: e,
-        stackTrace: st,
-      );
-      rethrow;
-    }
-  });
 }

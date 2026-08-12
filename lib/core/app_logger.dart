@@ -5,16 +5,25 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 /// 日志级别
-enum LogLevel {
-  debug('DEBUG', '🔍'),
-  info('INFO', 'ℹ️'),
-  warning('WARN', '⚠️'),
-  error('ERROR', '❌'),
-  fatal('FATAL', '💀');
+enum LogLevel { debug, info, warning, error, fatal }
 
-  const LogLevel(this.label, this.icon);
-  final String label;
-  final String icon;
+/// LogLevel 扩展 (避免增强枚举在 web 编译器上的兼容性问题)
+extension LogLevelExtension on LogLevel {
+  String get label => switch (this) {
+        LogLevel.debug => 'DEBUG',
+        LogLevel.info => 'INFO',
+        LogLevel.warning => 'WARN',
+        LogLevel.error => 'ERROR',
+        LogLevel.fatal => 'FATAL',
+      };
+
+  String get icon => switch (this) {
+        LogLevel.debug => '🔍',
+        LogLevel.info => 'ℹ️',
+        LogLevel.warning => '⚠️',
+        LogLevel.error => '❌',
+        LogLevel.fatal => '💀',
+      };
 }
 
 /// 单条日志记录
@@ -35,6 +44,10 @@ class LogEntry {
     this.metadata,
   });
 
+  /// 便捷访问器
+  String get levelLabel => level.label;
+  String get levelIcon => level.icon;
+
   String toFormattedString() {
     final ts =
         '${timestamp.hour.toString().padLeft(2, '0')}:'
@@ -43,7 +56,7 @@ class LogEntry {
         '${timestamp.millisecond.toString().padLeft(3, '0')}';
     final meta = metadata != null && metadata!.isNotEmpty ? ' | ${metadata}' : '';
     final st = stackTrace != null ? '\n  StackTrace:\n$stackTrace' : '';
-    return '$ts [$label] $tag: $message$meta$st';
+    return '$ts [$levelLabel] $tag: $message$meta$st';
   }
 
   Map<String, dynamic> toJson() => {

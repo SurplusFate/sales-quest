@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/app_logger.dart';
@@ -29,7 +30,6 @@ void main() {
   };
 
   // === 第三步: 捕获 Dart zone 中未处理的异步错误 ===
-  final originalOnError = PlatformDispatcher.instance.onError;
   PlatformDispatcher.instance.onError = (error, stack) {
     AppLogger.instance.fatal(
       'ZoneError',
@@ -37,7 +37,7 @@ void main() {
       error: error,
       stackTrace: stack,
     );
-    return originalOnError(error, stack);
+    return true;
   };
 
   // === 第四步: 在 protective zone 中启动 APP ===
