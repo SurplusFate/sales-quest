@@ -33,7 +33,16 @@ class HomePage extends ConsumerWidget {
         ],
       ),
       body: stats.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在加载数据...', style: TextStyle(fontSize: 14, color: Colors.grey)),
+            ],
+          ),
+        ),
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

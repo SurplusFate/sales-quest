@@ -38,12 +38,13 @@ final todayXpProvider = StreamProvider<int>((ref) {
 });
 
 /// 今日作战数据 (Stream, 自动刷新)
-final todayBattleStatsProvider = StreamProvider<BattleStats>((ref) async* {
+/// 监听事件表变化, 任一事件变化时重新查询全部统计
+final todayBattleStatsProvider = StreamProvider<BattleStats>((ref) {
   final db = ref.watch(databaseProvider);
   final now = DateTime.now();
 
-  // 合并多个 Stream 为一个
-  await for (final _ in db.eventDao.watchCountEventToday(EventType.open.code, now)) {
+  // 用 open 事件流作为触发器, 任何事件变化都会触发重新查询
+  return db.eventDao.watchCountEventToday(EventType.open.code, now).asyncMap((_) async {
     final open = await db.eventDao.countEventToday(EventType.open.code, now);
     final conversation = await db.eventDao.countEventToday(EventType.conversation.code, now);
     final query = await db.eventDao.countEventToday(EventType.query.code, now);
@@ -51,7 +52,7 @@ final todayBattleStatsProvider = StreamProvider<BattleStats>((ref) async* {
     final won = await db.eventDao.countEventToday(EventType.won.code, now);
     final xp = await db.xpDao.getXpToday(now);
 
-    yield BattleStats(
+    return BattleStats(
       open: open,
       conversation: conversation,
       query: query,
@@ -59,7 +60,7 @@ final todayBattleStatsProvider = StreamProvider<BattleStats>((ref) async* {
       won: won,
       xp: xp,
     );
-  }
+  });
 });
 
 class BattleStats {
