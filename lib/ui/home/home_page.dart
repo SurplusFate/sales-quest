@@ -297,17 +297,19 @@ class _BattleGrid extends StatelessWidget {
       _StatItem('今日XP', stats.xp, Icons.flash_on, Colors.amber),
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 1.0,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, i) => _StatCard(item: items[i]),
+    // 用 Wrap + 固定尺寸替代 GridView, 避免 ListView 内嵌套滚动视图导致高度失控
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: items.map((item) {
+        // 每行3个, 减去 spacing 后等分
+        final width = (MediaQuery.of(context).size.width - 16 * 2 - 8 * 2) / 3;
+        return SizedBox(
+          width: width,
+          height: width, // 正方形
+          child: _StatCard(item: item),
+        );
+      }).toList(),
     );
   }
 }
@@ -328,18 +330,20 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(item.icon, color: item.color, size: 24),
+            Icon(item.icon, color: item.color, size: 22),
             const SizedBox(height: 4),
             Text('${item.value}',
                 style: Theme.of(context)
                     .textTheme
-                    .headlineSmall
+                    .titleLarge
                     ?.copyWith(fontWeight: FontWeight.bold)),
-            Text(item.label, style: Theme.of(context).textTheme.labelSmall),
+            Text(item.label,
+                style: Theme.of(context).textTheme.labelSmall,
+                overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
