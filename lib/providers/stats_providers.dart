@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_constants.dart';
 import '../data/database/app_database.dart';
+import '../models/enums.dart';
 import 'database_provider.dart';
 
 /// 用户统计 stream
@@ -29,32 +31,35 @@ final levelProgressProvider = Provider<double>((ref) {
   return AppLevels.getProgress(stats.totalXp);
 });
 
-/// 今日 XP
-final todayXpProvider = FutureProvider<int>((ref) async {
+/// 今日 XP (Stream, 自动刷新)
+final todayXpProvider = StreamProvider<int>((ref) {
   final db = ref.watch(databaseProvider);
-  return db.xpDao.getXpToday(DateTime.now());
+  return db.xpDao.watchXpToday(DateTime.now());
 });
 
-/// 今日作战数据
-final todayBattleStatsProvider = FutureProvider<BattleStats>((ref) async {
+/// 今日作战数据 (Stream, 自动刷新)
+final todayBattleStatsProvider = StreamProvider<BattleStats>((ref) async* {
   final db = ref.watch(databaseProvider);
   final now = DateTime.now();
 
-  final open = await db.eventDao.countEventToday('OPEN', now);
-  final conversation = await db.eventDao.countEventToday('CONVERSATION', now);
-  final query = await db.eventDao.countEventToday('QUERY', now);
-  final followUp = await db.eventDao.countEventToday('FOLLOW_UP', now);
-  final won = await db.eventDao.countEventToday('WON', now);
-  final xp = await db.xpDao.getXpToday(now);
+  // 合并多个 Stream 为一个
+  await for (final _ in db.eventDao.watchCountEventToday(EventType.open.code, now)) {
+    final open = await db.eventDao.countEventToday(EventType.open.code, now);
+    final conversation = await db.eventDao.countEventToday(EventType.conversation.code, now);
+    final query = await db.eventDao.countEventToday(EventType.query.code, now);
+    final followUp = await db.eventDao.countEventToday(EventType.followUp.code, now);
+    final won = await db.eventDao.countEventToday(EventType.won.code, now);
+    final xp = await db.xpDao.getXpToday(now);
 
-  return BattleStats(
-    open: open,
-    conversation: conversation,
-    query: query,
-    followUp: followUp,
-    won: won,
-    xp: xp,
-  );
+    yield BattleStats(
+      open: open,
+      conversation: conversation,
+      query: query,
+      followUp: followUp,
+      won: won,
+      xp: xp,
+    );
+  }
 });
 
 class BattleStats {

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +28,7 @@ void main() {
     FlutterError.presentError(details);
   };
 
-  // === 第三步: 捕获 Dart zone 中未处理的异步错误 ===
+  // === 第三步: 捕获未处理的异步错误 ===
   PlatformDispatcher.instance.onError = (error, stack) {
     AppLogger.instance.fatal(
       'ZoneError',

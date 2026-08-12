@@ -136,7 +136,7 @@ class _AchievementCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       color: status.unlocked
-          ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
           : null,
       child: ListTile(
         leading: Container(
@@ -145,8 +145,8 @@ class _AchievementCard extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: status.unlocked
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                : Colors.grey.withOpacity(0.1),
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                : Colors.grey.withValues(alpha: 0.1),
           ),
           child: Center(
             child: Text(def.icon, style: TextStyle(

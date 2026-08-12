@@ -48,6 +48,19 @@ class EventDao extends DatabaseAccessor<AppDatabase> with _$EventDaoMixin {
     return result;
   }
 
+  /// 监听当天某类型事件数量 (Stream)
+  Stream<int> watchCountEventToday(String eventType, DateTime date) {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    final countExp = customerEvents.eventType.count();
+    final query = selectOnly(customerEvents)
+      ..addColumns([countExp])
+      ..where(customerEvents.eventType.equals(eventType) &
+          customerEvents.eventTime.isBiggerOrEqualValue(start) &
+          customerEvents.eventTime.isSmallerThanValue(end));
+    return query.map((row) => row.read(countExp) ?? 0).watchSingle();
+  }
+
   /// 统计某类型事件在时间范围内的数量
   Future<int> countEventRange(String eventType, DateTime start, DateTime end) async {
     final countExp = customerEvents.eventType.count();

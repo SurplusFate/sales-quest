@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/app_constants.dart';
 import '../../core/app_logger.dart';
+import '../../providers/database_provider.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -143,10 +144,34 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
-      // 清除数据 - 通过关闭并重新创建数据库
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('数据已清除, 请重启 APP')),
-      );
+      try {
+        final db = ref.read(databaseProvider);
+        // 删除所有表数据
+        await db.delete(db.customers).go();
+        await db.delete(db.customerEvents).go();
+        await db.delete(db.xpRecords).go();
+        await db.delete(db.followUps).go();
+        await db.delete(db.dailyTasks).go();
+        await db.delete(db.achievements).go();
+        // 重置统计
+        await db.statsDao.updateStats(
+          totalXp: 0,
+          currentLevel: 1,
+          streakDays: 0,
+          lastActiveDate: null,
+        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('所有数据已清除')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('清除失败: $e')),
+          );
+        }
+      }
     }
   }
 }

@@ -18,7 +18,15 @@ class StatsDao extends DatabaseAccessor<AppDatabase> with _$StatsDaoMixin {
   }
 
   Stream<UserStatEntity> watchStats() {
-    return (select(userStats)..where((t) => t.id.equals('default'))).watchSingleOrNull().map((s) => s!);
+    return (select(userStats)..where((t) => t.id.equals('default')))
+        .watchSingleOrNull()
+        .asyncMap((s) async {
+      if (s == null) {
+        await into(userStats).insert(UserStatsCompanion.insert(id: const Value('default')));
+        return (await (select(userStats)..where((t) => t.id.equals('default'))).getSingle());
+      }
+      return s;
+    });
   }
 
   Future<void> updateStats({

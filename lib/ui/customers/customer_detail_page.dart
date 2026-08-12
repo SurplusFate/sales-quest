@@ -166,7 +166,7 @@ class CustomerDetailPage extends ConsumerWidget {
                         ),
                         ActionChip(
                           label: const Text('加微信'),
-                          avatar: const Icon(Icons.wechat, size: 18),
+                          avatar: const Icon(Icons.chat, size: 18),
                           onPressed: () => _recordEvent(context, ref, EventType.wechat),
                         ),
                         ActionChip(
@@ -283,7 +283,7 @@ class _ValueBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -420,7 +420,7 @@ class _EventTile extends StatelessWidget {
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: type.xp > 0 ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+        backgroundColor: type.xp > 0 ? Colors.green.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
         child: Text(_eventEmoji(type), style: const TextStyle(fontSize: 18)),
       ),
       title: Text(type.label),

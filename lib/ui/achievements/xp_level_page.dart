@@ -77,7 +77,7 @@ class XpLevelPage extends ConsumerWidget {
             final reached = (stats?.totalXp ?? 0) >= lv.xpRequired;
             final isCurrent = currentLevel.level == lv.level;
             return Card(
-              color: isCurrent ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) : null,
+              color: isCurrent ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3) : null,
               child: ListTile(
                 leading: Icon(
                   reached ? Icons.emoji_events : Icons.lock_outline,
@@ -118,7 +118,7 @@ class XpLevelPage extends ConsumerWidget {
                     margin: const EdgeInsets.only(bottom: 4),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.green.withOpacity(0.1),
+                        backgroundColor: Colors.green.withValues(alpha: 0.1),
                         child: const Icon(Icons.flash_on, color: Colors.green, size: 20),
                       ),
                       title: Text(xp.actionType),

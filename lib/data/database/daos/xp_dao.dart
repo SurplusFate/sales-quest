@@ -55,6 +55,18 @@ class XpDao extends DatabaseAccessor<AppDatabase> with _$XpDaoMixin {
     return result;
   }
 
+  /// 监听当天总 XP (Stream)
+  Stream<int> watchXpToday(DateTime date) {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    final sumExp = xpRecords.xp.sum();
+    final query = selectOnly(xpRecords)
+      ..addColumns([sumExp])
+      ..where(xpRecords.createdAt.isBiggerOrEqualValue(start) &
+          xpRecords.createdAt.isSmallerThanValue(end));
+    return query.map((row) => row.read(sumExp) ?? 0).watchSingle();
+  }
+
   Stream<List<XpRecordEntity>> watchRecent({int limit = 20}) {
     return (select(xpRecords)
           ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)])

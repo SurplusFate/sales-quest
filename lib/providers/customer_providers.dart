@@ -230,6 +230,8 @@ final saveCustomerProvider =
 final recordEventProvider =
     FutureProvider.family<void, RecordEventParams>((ref, params) async {
   final xpService = ref.watch(xpServiceProvider);
+  final db = ref.read(databaseProvider);
+
   await xpService.recordEvent(
     customerId: params.customerId,
     eventType: params.eventType,
@@ -237,14 +239,49 @@ final recordEventProvider =
     metadata: params.metadata,
   );
 
-  // 更新客户销售阶段
-  final db = ref.read(databaseProvider);
+  // 更新客户销售阶段并重新计算价值评分
   final newStage = _eventToStage(params.eventType);
   if (newStage != null) {
-    await db.customerDao.updateCustomer(params.customerId, CustomersCompanion(
-      salesStage: Value(newStage.code),
-      updatedAt: Value(DateTime.now()),
-    ));
+    // 获取当前客户数据
+    final customer = await db.customerDao.getById(params.customerId);
+    if (customer != null) {
+      // 重新计算价值评分 (CP-1 修复)
+      final newValueScore = ValueScoreService.calculate(
+        CustomerEntity(
+          id: customer.id,
+          name: customer.name,
+          phone: customer.phone,
+          operator: customer.operator,
+          selfReportedCost: customer.selfReportedCost,
+          actualCost: customer.actualCost,
+          packageName: customer.packageName,
+          traffic: customer.traffic,
+          minutes: customer.minutes,
+          broadband: customer.broadband,
+          subCards: customer.subCards,
+          camera: customer.camera,
+          contractStatus: customer.contractStatus,
+          otherBusiness: customer.otherBusiness,
+          status: customer.status,
+          valueScore: 0,
+          valueLevel: 'LOW',
+          salesStage: newStage.code,
+          nextAction: customer.nextAction,
+          nextFollowUpAt: customer.nextFollowUpAt,
+          note: customer.note,
+          createdAt: customer.createdAt,
+          updatedAt: DateTime.now(),
+        ),
+      );
+      final newValueLevel = ValueScoreService.getLevel(newValueScore);
+
+      await db.customerDao.updateCustomer(params.customerId, CustomersCompanion(
+        salesStage: Value(newStage.code),
+        valueScore: Value(newValueScore),
+        valueLevel: Value(newValueLevel.code),
+        updatedAt: Value(DateTime.now()),
+      ));
+    }
   }
 
   await ref.read(dailyTaskServiceProvider).refreshTodayProgress();
@@ -359,6 +396,8 @@ class SaveCustomerParams {
   final CustomerStatus status;
   final SalesStage salesStage;
   final DateTime? nextFollowUpAt;
+  final String? note;
+  final String? nextAction;
 
   const SaveCustomerParams({
     this.id,
@@ -378,6 +417,8 @@ class SaveCustomerParams {
     this.status = CustomerStatus.invalid,
     this.salesStage = SalesStage.new_,
     this.nextFollowUpAt,
+    this.note,
+    this.nextAction,
   });
 }
 

@@ -284,7 +284,7 @@ class _LogCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 2),
       color: entry.level == LogLevel.error || entry.level == LogLevel.fatal
-          ? color.withOpacity(0.05)
+          ? color.withValues(alpha: 0.05)
           : null,
       child: InkWell(
         onLongPress: () {
@@ -305,7 +305,7 @@ class _LogCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
+                      color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(

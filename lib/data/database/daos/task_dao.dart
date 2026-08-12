@@ -11,7 +11,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
   Stream<List<DailyTaskEntity>> watchByDate(String date) =>
       (select(dailyTasks)
             ..where((t) => t.date.equals(date))
-            ..orderBy([(t) => OrderingTerm(expression: t.target)]))
+            ..orderBy([(t) => OrderingTerm(expression: t.target, mode: OrderingMode.desc)]))
           .watch();
 
   Future<List<DailyTaskEntity>> getByDate(String date) =>

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/app_constants.dart';
 import '../../core/app_logger.dart';
+import '../../data/database/app_database.dart';
 import '../../providers/stats_providers.dart';
 import '../../providers/task_providers.dart';
 import '../../models/enums.dart';
@@ -12,8 +13,6 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AppLogger.instance.info('HomePage', 'build');
-
     final stats = ref.watch(todayBattleStatsProvider);
     final level = ref.watch(currentLevelProvider);
     final nextLevel = ref.watch(nextLevelProvider);
@@ -22,13 +21,6 @@ class HomePage extends ConsumerWidget {
     final tasks = ref.watch(todayTasksProvider).valueOrNull ?? [];
     final executionRate = ref.watch(todayExecutionRateProvider).valueOrNull ?? 0;
     final todayFollowUps = ref.watch(todayFollowUpsProvider).valueOrNull ?? [];
-
-    // 记录数据加载状态
-    stats.when(
-      data: (s) => AppLogger.instance.debug('HomePage', '数据加载成功: open=${s.open}, xp=${s.xp}'),
-      loading: () => AppLogger.instance.debug('HomePage', '数据加载中...'),
-      error: (e, st) => AppLogger.instance.error('HomePage', '数据加载失败: $e', error: e, stackTrace: st),
-    );
 
     return Scaffold(
       appBar: AppBar(
@@ -40,96 +32,134 @@ class HomePage extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // === 等级卡片 ===
-          _LevelCard(
-            level: level,
-            nextLevel: nextLevel,
-            progress: progress,
-            totalXp: statsEntity?.totalXp ?? 0,
+      body: stats.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('数据加载失败', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Text('$error', style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () {
+                    ref.invalidate(todayBattleStatsProvider);
+                    ref.invalidate(userStatsProvider);
+                    ref.invalidate(todayTasksProvider);
+                  },
+                  child: const Text('重试'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => context.push('/dev/logs'),
+                  child: const Text('查看日志'),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
+        ),
+        data: (s) => ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // === 等级卡片 ===
+            _LevelCard(
+              level: level,
+              nextLevel: nextLevel,
+              progress: progress,
+              totalXp: statsEntity?.totalXp ?? 0,
+            ),
+            const SizedBox(height: 16),
 
-          // === 今日作战 ===
-          Text('今日作战', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          stats.when(
-            data: (s) => _BattleGrid(stats: s),
-            loading: () => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
-            error: (_, __) => const SizedBox(height: 120, child: Center(child: Text('加载失败'))),
-          ),
-          const SizedBox(height: 16),
+            // === 今日作战 ===
+            Text('今日作战', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            _BattleGrid(stats: s),
+            const SizedBox(height: 16),
 
-          // === 今日执行度 ===
-          if (executionRate > 0)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('今日执行度', style: Theme.of(context).textTheme.labelMedium),
-                          Text('${(executionRate * 100).round()}%',
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: executionRate >= 0.8
-                                        ? Colors.green
-                                        : executionRate >= 0.5
-                                            ? Colors.orange
-                                            : Colors.red,
-                                  )),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: executionRate,
-                          minHeight: 12,
-                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            // === 今日执行度 ===
+            if (executionRate > 0)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('今日执行度', style: Theme.of(context).textTheme.labelMedium),
+                            Text('${(executionRate * 100).round()}%',
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: executionRate >= 0.8
+                                          ? Colors.green
+                                          : executionRate >= 0.5
+                                              ? Colors.orange
+                                              : Colors.red,
+                                    )),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: executionRate,
+                            minHeight: 12,
+                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          const SizedBox(height: 16),
-
-          // === 今日任务 ===
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('今日任务', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              TextButton(
-                onPressed: () => context.push('/tasks'),
-                child: const Text('全部'),
-              ),
-            ],
-          ),
-          ...tasks.take(4).map((t) => _TaskTile(task: t)),
-
-          // === 今日待跟进 ===
-          if (todayFollowUps.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Text('今日跟进 (${todayFollowUps.length})',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            ...todayFollowUps.map((fu) => ListTile(
-                  leading: const Icon(Icons.notifications_active, color: Colors.orange),
-                  title: Text(fu.content ?? '跟进提醒'),
-                  subtitle: Text(_formatTime(fu.scheduledAt)),
+
+            // === 今日任务 ===
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('今日任务', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                TextButton(
+                  onPressed: () => context.push('/tasks'),
+                  child: const Text('全部'),
+                ),
+              ],
+            ),
+            if (tasks.isEmpty)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.task_outlined, color: Colors.grey),
+                  title: const Text('暂无任务'),
+                  subtitle: const Text('任务将在每天自动生成'),
                   dense: true,
-                  onTap: () => context.push('/customer/${fu.customerId}'),
-                )),
+                ),
+              )
+            else
+              ...tasks.take(4).map((t) => _TaskTile(task: t)),
+
+            // === 今日待跟进 ===
+            if (todayFollowUps.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text('今日跟进 (${todayFollowUps.length})',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              ...todayFollowUps.map((fu) => ListTile(
+                    leading: const Icon(Icons.notifications_active, color: Colors.orange),
+                    title: Text(fu.content ?? '跟进提醒'),
+                    subtitle: Text(_formatTime(fu.scheduledAt)),
+                    dense: true,
+                    onTap: () => context.push('/customer/${fu.customerId}'),
+                  )),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -291,15 +321,15 @@ class _StatCard extends StatelessWidget {
 }
 
 class _TaskTile extends StatelessWidget {
-  final dynamic task;
+  final DailyTaskEntity task;
   const _TaskTile({required this.task});
 
   @override
   Widget build(BuildContext context) {
-    final completed = task.completed as bool;
-    final progress = task.progress as int;
-    final target = task.target as int;
-    final metric = task.metric as String;
+    final completed = task.completed;
+    final taskProgress = task.progress;
+    final target = task.target;
+    final metric = task.metric;
 
     return Card(
       child: ListTile(
@@ -308,9 +338,9 @@ class _TaskTile extends StatelessWidget {
           color: completed ? Colors.green : null,
         ),
         title: Text('${_metricLabel(metric)} $target 人'),
-        subtitle: Text('进度: $progress / $target'),
+        subtitle: Text('进度: $taskProgress / $target'),
         trailing: completed
-            ? Chip(label: Text('+${task.xpReward} XP'), backgroundColor: Colors.green.withOpacity(0.1))
+            ? Chip(label: Text('+${task.xpReward} XP'), backgroundColor: Colors.green.withValues(alpha: 0.1))
             : null,
         dense: true,
       ),
