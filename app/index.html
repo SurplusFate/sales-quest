@@ -1,24 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="/app/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Sales Quest - gamified CRM">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -32,18 +20,44 @@
   <title>sales_quest</title>
   <link rel="manifest" href="manifest.json">
 
+  <!-- CSS: 确保Flutter Web视图严格限制在浏览器视口内, 防止WebView中出现无限滚动 -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    flt-glass-pane, flutter-view {
+      position: absolute !important;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
+
   <!-- sql.js: SQLite WebAssembly for drift web database -->
   <script src="sql-wasm.js"></script>
+
+  <!-- 强制设置视口高度, 解决部分WebView中innerHeight返回错误值的问题 -->
+  <script>
+    function fixViewport() {
+      var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.height = vh + 'px';
+      document.body.style.height = vh + 'px';
+    }
+    window.addEventListener('resize', fixViewport);
+    window.addEventListener('orientationchange', fixViewport);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', fixViewport);
+    }
+    fixViewport();
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

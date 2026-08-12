@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/app_constants.dart';
 import '../../data/database/app_database.dart';
 import '../../providers/stats_providers.dart';
 import '../../providers/task_providers.dart';
 import '../../models/enums.dart';
 
+/// 首页 - 紧凑布局, 确保一屏显示完所有核心信息
+/// 设计原则: 不使用 SingleChildScrollView (避免WebView中无限滚动),
+/// 改用 LayoutBuilder + Column, 内容按可用高度自适应
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -21,329 +23,312 @@ class HomePage extends ConsumerWidget {
     final executionRate = ref.watch(todayExecutionRateProvider).valueOrNull ?? 0;
     final todayFollowUps = ref.watch(todayFollowUpsProvider).valueOrNull ?? [];
 
-    // 默认空数据, 即使数据库未就绪也能渲染
     final battleStats = stats.valueOrNull ?? const BattleStats();
     final hasError = stats.hasError;
+    final theme = Theme.of(context);
+    final totalXp = statsEntity?.totalXp ?? 0;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sales Quest'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // === 错误提示 (如果有) ===
-          if (hasError)
-            Card(
-              color: Colors.red.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber, color: Colors.red),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '数据加载异常: ${stats.error}',
-                        style: const TextStyle(fontSize: 12, color: Colors.red),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+    // 使用 LayoutBuilder 获取可用空间, 不使用 SingleChildScrollView
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: theme.colorScheme.surface,
+          child: Column(
+            children: [
+              // === 错误提示 (如果有) ===
+              if (hasError)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  color: Colors.red.shade50,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber, color: Colors.red, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '数据加载异常',
+                          style: const TextStyle(fontSize: 11, color: Colors.red),
+                        ),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () => context.push('/dev/logs'),
-                      child: const Text('日志'),
-                    ),
-                  ],
+                      GestureDetector(
+                        onTap: () => context.push('/dev/logs'),
+                        child: const Text('日志', style: TextStyle(fontSize: 11, color: Colors.red, decoration: TextDecoration.underline)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
 
-          // === 等级卡片 (总是显示, 用默认值) ===
-          _LevelCard(
-            level: level,
-            nextLevel: nextLevel,
-            progress: progress,
-            totalXp: statsEntity?.totalXp ?? 0,
-          ),
-          const SizedBox(height: 16),
+              // === 主内容区域 ===
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- 等级卡片 (紧凑) ---
+                      _LevelBar(
+                        level: level.level,
+                        title: level.title,
+                        totalXp: totalXp,
+                        currentLevelXp: level.xpRequired,
+                        nextLevelXp: nextLevel?.xpRequired ?? level.xpRequired,
+                        progress: progress,
+                      ),
 
-          // === 今日作战 ===
-          Text('今日作战',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          _BattleGrid(stats: battleStats),
-          const SizedBox(height: 16),
+                      const SizedBox(height: 10),
 
-          // === 今日执行度 ===
-          if (executionRate > 0)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // --- 今日作战标题 ---
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('今日执行度',
-                              style: Theme.of(context).textTheme.labelMedium),
-                          Text('${(executionRate * 100).round()}%',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
+                          Text('今日作战',
+                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                          if (executionRate > 0)
+                            Text('${(executionRate * 100).round()}% 执行度',
+                                style: theme.textTheme.labelSmall?.copyWith(
                                     color: executionRate >= 0.8
                                         ? Colors.green
                                         : executionRate >= 0.5
                                             ? Colors.orange
                                             : Colors.red,
-                                  )),
+                                    fontWeight: FontWeight.bold)),
                         ],
                       ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: executionRate,
-                          minHeight: 12,
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
+                      const SizedBox(height: 6),
 
-          // === 今日任务 ===
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('今日任务',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              TextButton(
-                onPressed: () => context.push('/tasks'),
-                child: const Text('全部'),
+                      // --- 六宫格统计 (2行3列, 紧凑) ---
+                      Row(
+                        children: [
+                          _CompactStat('见面', battleStats.open, Icons.groups, Colors.blue),
+                          const SizedBox(width: 6),
+                          _CompactStat('沟通', battleStats.conversation, Icons.chat, Colors.green),
+                          const SizedBox(width: 6),
+                          _CompactStat('查询', battleStats.query, Icons.search, Colors.purple),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          _CompactStat('跟进', battleStats.followUp, Icons.phone_in_talk, Colors.orange),
+                          const SizedBox(width: 6),
+                          _CompactStat('成交', battleStats.won, Icons.celebration, Colors.red),
+                          const SizedBox(width: 6),
+                          _CompactStat('今日XP', battleStats.xp, Icons.flash_on, Colors.amber),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // --- 今日任务 ---
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('今日任务',
+                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                          GestureDetector(
+                            onTap: () => context.push('/tasks'),
+                            child: Text('全部 →', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // 任务列表 (最多显示3条, 超出不滚动直接截断)
+                      if (tasks.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text('暂无任务', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: Column(
+                            children: [
+                              ...tasks.take(2).map((t) => _CompactTaskRow(task: t)),
+                              if (todayFollowUps.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Icon(Icons.notifications_active, color: Colors.orange, size: 14),
+                                    const SizedBox(width: 4),
+                                    Text('今日跟进 ${todayFollowUps.length} 条',
+                                        style: theme.textTheme.labelSmall?.copyWith(color: Colors.orange.shade700)),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+
+                      // 如果没有任务但有跟进, 用 Expanded 填充
+                      if (tasks.isEmpty && todayFollowUps.isNotEmpty)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('今日跟进 (${todayFollowUps.length})',
+                                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                ...todayFollowUps.take(3).map((fu) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.circle, size: 6, color: Colors.orange),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(fu.content ?? '跟进提醒',
+                                                style: const TextStyle(fontSize: 12),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis),
+                                          ),
+                                          Text(_formatTime(fu.scheduledAt),
+                                              style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                        ],
+                                      ),
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-          if (tasks.isEmpty)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.task_outlined, color: Colors.grey),
-                title: const Text('暂无任务'),
-                subtitle: const Text('任务将在每天自动生成'),
-                dense: true,
-              ),
-            )
-          else
-            ...tasks.take(4).map((t) => _TaskTile(task: t)),
-
-          // === 今日待跟进 ===
-          if (todayFollowUps.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text('今日跟进 (${todayFollowUps.length})',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            ...todayFollowUps.map((fu) => ListTile(
-                  leading: const Icon(Icons.notifications_active,
-                      color: Colors.orange),
-                  title: Text(fu.content ?? '跟进提醒'),
-                  subtitle: Text(_formatTime(fu.scheduledAt)),
-                  dense: true,
-                  onTap: () => context.push('/customer/${fu.customerId}'),
-                )),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 
   String _formatTime(DateTime dt) {
-    return '${dt.month}月${dt.day}日 ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }
 
-class _LevelCard extends StatelessWidget {
-  final LevelDef level;
-  final LevelDef? nextLevel;
-  final double progress;
+/// 紧凑的等级条 (单行)
+class _LevelBar extends StatelessWidget {
+  final int level;
+  final String title;
   final int totalXp;
+  final int currentLevelXp;
+  final int nextLevelXp;
+  final double progress;
 
-  const _LevelCard({
+  const _LevelBar({
     required this.level,
-    required this.nextLevel,
-    required this.progress,
+    required this.title,
     required this.totalXp,
+    required this.currentLevelXp,
+    required this.nextLevelXp,
+    required this.progress,
   });
 
   @override
   Widget build(BuildContext context) {
-    final xpInLevel = totalXp - level.xpRequired;
-    final xpForNext =
-        nextLevel != null ? nextLevel!.xpRequired - level.xpRequired : 0;
+    final theme = Theme.of(context);
+    final xpInLevel = totalXp - currentLevelXp;
+    final xpNeeded = nextLevelXp - currentLevelXp;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.tertiary,
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Lv.${level.level}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(level.title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold)),
-                      if (nextLevel != null)
-                        Text('$xpInLevel / $xpForNext XP',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ))
-                      else
-                        Text('已满级',
-                            style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  ),
-                ),
-                Text('+$totalXp',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        )),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 10,
-                backgroundColor:
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-            ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.08),
+            theme.colorScheme.tertiary.withValues(alpha: 0.06),
           ],
         ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          // 等级徽章
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [theme.colorScheme.primary, theme.colorScheme.tertiary],
+              ),
+            ),
+            child: Center(
+              child: Text(
+                'L$level',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // 等级名 + 进度条
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text(title, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Text('$xpInLevel/$xpNeeded XP',
+                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress.clamp(0.0, 1.0),
+                    minHeight: 5,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _BattleGrid extends StatelessWidget {
-  final BattleStats stats;
-  const _BattleGrid({required this.stats});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      _StatItem('见面', stats.open, Icons.groups, Colors.blue),
-      _StatItem('有效沟通', stats.conversation, Icons.chat, Colors.green),
-      _StatItem('查询', stats.query, Icons.search, Colors.purple),
-      _StatItem('跟进', stats.followUp, Icons.phone_in_talk, Colors.orange),
-      _StatItem('成交', stats.won, Icons.celebration, Colors.red),
-      _StatItem('今日XP', stats.xp, Icons.flash_on, Colors.amber),
-    ];
-
-    // 用 Wrap + 固定尺寸替代 GridView, 避免 ListView 内嵌套滚动视图导致高度失控
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: items.map((item) {
-        // 每行3个, 减去 spacing 后等分
-        final width = (MediaQuery.of(context).size.width - 16 * 2 - 8 * 2) / 3;
-        return SizedBox(
-          width: width,
-          height: width, // 正方形
-          child: _StatCard(item: item),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _StatItem {
+/// 紧凑统计卡片
+class _CompactStat extends StatelessWidget {
   final String label;
   final int value;
   final IconData icon;
   final Color color;
-  const _StatItem(this.label, this.value, this.icon, this.color);
-}
 
-class _StatCard extends StatelessWidget {
-  final _StatItem item;
-  const _StatCard({required this.item});
+  const _CompactStat(this.label, this.value, this.icon, this.color);
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(item.icon, color: item.color, size: 22),
-            const SizedBox(height: 4),
-            Text('${item.value}',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
-            Text(item.label,
-                style: Theme.of(context).textTheme.labelSmall,
-                overflow: TextOverflow.ellipsis),
+            Icon(icon, color: color, size: 16),
+            const SizedBox(height: 2),
+            Text('$value',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(label, style: theme.textTheme.labelSmall?.copyWith(fontSize: 10)),
           ],
         ),
       ),
@@ -351,31 +336,37 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _TaskTile extends StatelessWidget {
+/// 紧凑任务行
+class _CompactTaskRow extends StatelessWidget {
   final DailyTaskEntity task;
-  const _TaskTile({required this.task});
+  const _CompactTaskRow({required this.task});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final completed = task.completed;
-    final taskProgress = task.progress;
-    final target = task.target;
-    final metric = task.metric;
-
-    return Card(
-      child: ListTile(
-        leading: Icon(
-          completed ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: completed ? Colors.green : null,
-        ),
-        title: Text('${_metricLabel(metric)} $target 人'),
-        subtitle: Text('进度: $taskProgress / $target'),
-        trailing: completed
-            ? Chip(
-                label: Text('+${task.xpReward} XP'),
-                backgroundColor: Colors.green.withValues(alpha: 0.1))
-            : null,
-        dense: true,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(
+            completed ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: completed ? Colors.green : Colors.grey,
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '${_metricLabel(task.metric)} ${task.progress}/${task.target}',
+              style: const TextStyle(fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (completed)
+            Text('+${task.xpReward}',
+                style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
