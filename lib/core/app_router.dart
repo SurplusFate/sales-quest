@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../core/app_logger.dart';
 import '../ui/home/home_page.dart';
 import '../ui/customers/customer_list_page.dart';
 import '../ui/customers/customer_detail_page.dart';
@@ -11,6 +12,7 @@ import '../ui/tasks/task_list_page.dart';
 import '../ui/achievements/xp_level_page.dart';
 import '../ui/achievements/achievement_page.dart';
 import '../ui/settings/settings_page.dart';
+import '../ui/dev/log_viewer_page.dart';
 import '../models/enums.dart';
 
 class AppRouter {
@@ -21,6 +23,7 @@ class AppRouter {
     return GoRouter(
       navigatorKey: _rootKey,
       initialLocation: '/',
+      observers: [_RouteLogger()],
       errorBuilder: (context, state) => Scaffold(
         appBar: AppBar(title: const Text('页面未找到')),
         body: Center(
@@ -105,8 +108,35 @@ class AppRouter {
           path: '/settings',
           builder: (context, state) => const SettingsPage(),
         ),
+        GoRoute(
+          path: '/dev/logs',
+          builder: (context, state) => const LogViewerPage(),
+        ),
       ],
     );
+  }
+}
+
+/// 路由观察者: 记录所有页面跳转
+class _RouteLogger extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    AppLogger.instance.info('Router', 'PUSH: ${route.settings.name} (from ${previousRoute?.settings.name})');
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    AppLogger.instance.info('Router', 'POP: ${route.settings.name} (back to ${previousRoute?.settings.name})');
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    AppLogger.instance.info('Router', 'REPLACE: ${oldRoute?.settings.name} -> ${newRoute?.settings.name}');
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    AppLogger.instance.info('Router', 'REMOVE: ${route.settings.name}');
   }
 }
 

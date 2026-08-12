@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/app_constants.dart';
+import '../../core/app_logger.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -82,6 +84,42 @@ class SettingsPage extends ConsumerWidget {
                 title: Text('AI 销售教练'),
                 subtitle: Text('计划在 V0.3 提供'),
               ),
+            ],
+          ),
+          _SettingsGroup(
+            title: '开发者',
+            children: [
+              ListenableBuilder(
+                listenable: AppLogger.instance,
+                builder: (context, _) {
+                  final errorCount = AppLogger.instance.errorsOnly.length;
+                  return ListTile(
+                    leading: Icon(
+                      Icons.bug_report_outlined,
+                      color: errorCount > 0 ? Colors.red : Colors.green,
+                    ),
+                    title: const Text('运行日志'),
+                    subtitle: Text(
+                      errorCount > 0
+                          ? '$errorCount 条错误日志'
+                          : '共 ${AppLogger.instance.entries.length} 条, 无错误',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/dev/logs'),
+                  );
+                },
+              ),
+              if (AppLogger.instance.logFilePath != null)
+                ListTile(
+                  leading: const Icon(Icons.file_present_outlined),
+                  title: const Text('日志文件路径'),
+                  subtitle: Text(
+                    AppLogger.instance.logFilePath!,
+                    style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
             ],
           ),
         ],

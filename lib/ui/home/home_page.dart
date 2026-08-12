@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/app_constants.dart';
+import '../../core/app_logger.dart';
 import '../../providers/stats_providers.dart';
 import '../../providers/task_providers.dart';
 import '../../models/enums.dart';
@@ -11,6 +12,8 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    AppLogger.instance.info('HomePage', 'build');
+
     final stats = ref.watch(todayBattleStatsProvider);
     final level = ref.watch(currentLevelProvider);
     final nextLevel = ref.watch(nextLevelProvider);
@@ -19,6 +22,13 @@ class HomePage extends ConsumerWidget {
     final tasks = ref.watch(todayTasksProvider).valueOrNull ?? [];
     final executionRate = ref.watch(todayExecutionRateProvider).valueOrNull ?? 0;
     final todayFollowUps = ref.watch(todayFollowUpsProvider).valueOrNull ?? [];
+
+    // 记录数据加载状态
+    stats.when(
+      data: (s) => AppLogger.instance.debug('HomePage', '数据加载成功: open=${s.open}, xp=${s.xp}'),
+      loading: () => AppLogger.instance.debug('HomePage', '数据加载中...'),
+      error: (e, st) => AppLogger.instance.error('HomePage', '数据加载失败: $e', error: e, stackTrace: st),
+    );
 
     return Scaffold(
       appBar: AppBar(
