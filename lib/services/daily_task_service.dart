@@ -105,21 +105,49 @@ class DailyTaskService {
   // ==================== 默认配置 (用户偏好) ====================
 
   /// 获取用户默认任务配置 (用于新一天的默认值)
+  ///
+  /// 全新数据库时, Settings 中不存在 default_include_* 等 key,
+  /// getInt 返回 0 → `!= 0` 为 false → 所有指标都不参与 (错误!)
+  /// 修复: 先检查 key 是否存在, 不存在时使用推荐默认值
   Future<DailyTaskConfig> getDefaultConfig() async {
+    // 读取目标值: 不存在时使用推荐值
+    final meetTarget = await _readIntWithDefault(
+        'default_meet_target', DefaultTaskConfig.recommendedMeetTarget);
+    final queryTarget = await _readIntWithDefault(
+        'default_query_target', DefaultTaskConfig.recommendedQueryTarget);
+    final dealTarget = await _readIntWithDefault(
+        'default_deal_target', DefaultTaskConfig.recommendedDealTarget);
+
+    // 读取 include 开关: 不存在时使用推荐值 (不能简单用 getInt != 0)
+    final includeMeet = await _readBoolWithDefault(
+        'default_include_meet', DefaultTaskConfig.recommendedIncludeMeet);
+    final includeQuery = await _readBoolWithDefault(
+        'default_include_query', DefaultTaskConfig.recommendedIncludeQuery);
+    final includeDeal = await _readBoolWithDefault(
+        'default_include_deal', DefaultTaskConfig.recommendedIncludeDeal);
+
     return DailyTaskConfig(
-      meetTarget: await _db.settingDao.getInt('default_meet_target') != 0
-          ? await _db.settingDao.getInt('default_meet_target')
-          : DefaultTaskConfig.recommendedMeetTarget,
-      queryTarget: await _db.settingDao.getInt('default_query_target') != 0
-          ? await _db.settingDao.getInt('default_query_target')
-          : DefaultTaskConfig.recommendedQueryTarget,
-      dealTarget: await _db.settingDao.getInt('default_deal_target') != 0
-          ? await _db.settingDao.getInt('default_deal_target')
-          : DefaultTaskConfig.recommendedDealTarget,
-      includeMeet: (await _db.settingDao.getInt('default_include_meet')) != 0,
-      includeQuery: (await _db.settingDao.getInt('default_include_query')) != 0,
-      includeDeal: (await _db.settingDao.getInt('default_include_deal')) != 0,
+      meetTarget: meetTarget,
+      queryTarget: queryTarget,
+      dealTarget: dealTarget,
+      includeMeet: includeMeet,
+      includeQuery: includeQuery,
+      includeDeal: includeDeal,
     );
+  }
+
+  /// 读取 int, key 不存在时返回 defaultValue
+  Future<int> _readIntWithDefault(String key, int defaultValue) async {
+    final raw = await _db.settingDao.get(key);
+    if (raw == null) return defaultValue;
+    return int.tryParse(raw) ?? defaultValue;
+  }
+
+  /// 读取 bool (存储为 0/1), key 不存在时返回 defaultValue
+  Future<bool> _readBoolWithDefault(String key, bool defaultValue) async {
+    final raw = await _db.settingDao.get(key);
+    if (raw == null) return defaultValue;
+    return raw == '1';
   }
 
   /// 保存用户默认任务配置

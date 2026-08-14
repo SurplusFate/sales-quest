@@ -22,6 +22,9 @@ class XpService {
   // ==================== 数据操作 (不再更新 streak) ====================
 
   /// 设置今日见人数
+  ///
+  /// 累计公式: 累计新值 = 累计旧值 - 当天旧值 + 当天新值
+  /// 无论新值比旧值大或小, 都必须更新累计值
   Future<void> setPeopleSeen(int count) async {
     final now = DateTime.now();
     final dateKey = _dateKey(now);
@@ -31,10 +34,8 @@ class XpService {
       await _db.settingDao.setInt('people_seen_$dateKey', count);
 
       final currentTotal = await _db.settingDao.getInt('total_meets');
-      final delta = count - previousToday;
-      if (delta > 0) {
-        await _db.settingDao.setInt('total_meets', currentTotal + delta);
-      }
+      final newTotal = currentTotal - previousToday + count;
+      await _db.settingDao.setInt('total_meets', newTotal < 0 ? 0 : newTotal);
     } catch (e, st) {
       AppLogger.instance.error('XpService', 'setPeopleSeen 失败: $e',
           error: e, stackTrace: st);
@@ -61,6 +62,8 @@ class XpService {
   }
 
   /// 设置今日查询数 (直接输入)
+  ///
+  /// 累计公式: 累计新值 = 累计旧值 - 当天旧值 + 当天新值
   Future<void> setQuery(int count) async {
     final now = DateTime.now();
     final dateKey = _dateKey(now);
@@ -70,10 +73,8 @@ class XpService {
       await _db.settingDao.setInt('queries_$dateKey', count);
 
       final currentTotal = await _db.settingDao.getInt('total_queries');
-      final delta = count - previousToday;
-      if (delta > 0) {
-        await _db.settingDao.setInt('total_queries', currentTotal + delta);
-      }
+      final newTotal = currentTotal - previousToday + count;
+      await _db.settingDao.setInt('total_queries', newTotal < 0 ? 0 : newTotal);
     } catch (e, st) {
       AppLogger.instance.error('XpService', 'setQuery 失败: $e',
           error: e, stackTrace: st);
@@ -100,6 +101,8 @@ class XpService {
   }
 
   /// 设置今日成交数 (直接输入)
+  ///
+  /// 累计公式: 累计新值 = 累计旧值 - 当天旧值 + 当天新值
   Future<void> setDeal(int count) async {
     final now = DateTime.now();
     final dateKey = _dateKey(now);
@@ -109,10 +112,8 @@ class XpService {
       await _db.settingDao.setInt('deals_$dateKey', count);
 
       final currentTotal = await _db.settingDao.getInt('total_deals');
-      final delta = count - previousToday;
-      if (delta > 0) {
-        await _db.settingDao.setInt('total_deals', currentTotal + delta);
-      }
+      final newTotal = currentTotal - previousToday + count;
+      await _db.settingDao.setInt('total_deals', newTotal < 0 ? 0 : newTotal);
     } catch (e, st) {
       AppLogger.instance.error('XpService', 'setDeal 失败: $e',
           error: e, stackTrace: st);
@@ -123,35 +124,43 @@ class XpService {
   // ==================== XP 发放 ====================
 
   /// 发放任务完成 XP (单个任务)
+  ///
+  /// 事务保证: 检查→写XP→写领取标记→更新totalXp 必须原子完成
+  /// 同一任务同一天只能发放一次
   Future<int> awardTaskXp(String taskId, int xpAmount) async {
     try {
       final now = DateTime.now();
       final dateKey = _dateKey(now);
-
-      // 防刷: 检查今天是否已经发放过此任务的 XP
       final xpKey = 'task_xp_${taskId}_$dateKey';
-      final alreadyAwarded = await _db.settingDao.get(xpKey);
-      if (alreadyAwarded != null) return 0;
 
-      await _db.xpDao.insertXp(XpRecordsCompanion.insert(
-        customerId: const Value('daily'),
-        actionType: 'TASK_$taskId',
-        xp: xpAmount,
-      ));
+      return await _db.transaction(() async {
+        // 事务内检查: 今天是否已经发放过此任务的 XP
+        final alreadyAwarded = await _db.settingDao.get(xpKey);
+        if (alreadyAwarded != null) return 0;
 
-      await _db.settingDao.set(xpKey, '1');
+        // 1. 写 XP 记录
+        await _db.xpDao.insertXp(XpRecordsCompanion.insert(
+          customerId: const Value('daily'),
+          actionType: 'TASK_$taskId',
+          xp: xpAmount,
+        ));
 
-      final stats = await _db.statsDao.getStats();
-      final newTotalXp = stats.totalXp + xpAmount;
-      final newLevel = AppLevels.getLevel(newTotalXp).level;
+        // 2. 写领取标记
+        await _db.settingDao.set(xpKey, '1');
 
-      await _db.statsDao.updateStats(
-        totalXp: newTotalXp,
-        currentLevel: newLevel,
-      );
+        // 3. 更新 totalXp 和 level
+        final stats = await _db.statsDao.getStats();
+        final newTotalXp = stats.totalXp + xpAmount;
+        final newLevel = AppLevels.getLevel(newTotalXp).level;
 
-      AppLogger.instance.info('XpService', '任务 $taskId 完成, +$xpAmount XP');
-      return xpAmount;
+        await _db.statsDao.updateStats(
+          totalXp: newTotalXp,
+          currentLevel: newLevel,
+        );
+
+        AppLogger.instance.info('XpService', '任务 $taskId 完成, +$xpAmount XP');
+        return xpAmount;
+      });
     } catch (e, st) {
       AppLogger.instance.error('XpService', 'awardTaskXp 失败: $e',
           error: e, stackTrace: st);
@@ -161,38 +170,45 @@ class XpService {
 
   /// 发放成交额外 XP (当成交不参与基础任务时)
   /// 每次新增成交发放一次, 防止重复
+  ///
+  /// 事务保证: 检查已发放数量→写XP→更新标记→更新totalXp 原子完成
   Future<int> awardDealExtraXp(int dealCount) async {
     try {
       final now = DateTime.now();
       final dateKey = _dateKey(now);
-
-      // 已发放过的成交数量
       final awardedKey = 'deal_extra_xp_awarded_$dateKey';
-      final alreadyAwardedCount = await _db.settingDao.getInt(awardedKey);
-      final newDeals = dealCount - alreadyAwardedCount;
-      if (newDeals <= 0) return 0;
 
-      final totalXp = newDeals * XpRewards.dealExtraXp;
+      return await _db.transaction(() async {
+        // 事务内检查已发放过的成交数量
+        final alreadyAwardedCount = await _db.settingDao.getInt(awardedKey);
+        final newDeals = dealCount - alreadyAwardedCount;
+        if (newDeals <= 0) return 0;
 
-      await _db.xpDao.insertXp(XpRecordsCompanion.insert(
-        customerId: const Value('daily'),
-        actionType: 'DEAL_EXTRA',
-        xp: totalXp,
-      ));
+        final totalXp = newDeals * XpRewards.dealExtraXp;
 
-      await _db.settingDao.setInt(awardedKey, dealCount);
+        // 1. 写 XP 记录
+        await _db.xpDao.insertXp(XpRecordsCompanion.insert(
+          customerId: const Value('daily'),
+          actionType: 'DEAL_EXTRA',
+          xp: totalXp,
+        ));
 
-      final stats = await _db.statsDao.getStats();
-      final newTotalXp = stats.totalXp + totalXp;
-      final newLevel = AppLevels.getLevel(newTotalXp).level;
+        // 2. 更新已发放标记
+        await _db.settingDao.setInt(awardedKey, dealCount);
 
-      await _db.statsDao.updateStats(
-        totalXp: newTotalXp,
-        currentLevel: newLevel,
-      );
+        // 3. 更新 totalXp 和 level
+        final stats = await _db.statsDao.getStats();
+        final newTotalXp = stats.totalXp + totalXp;
+        final newLevel = AppLevels.getLevel(newTotalXp).level;
 
-      AppLogger.instance.info('XpService', '成交额外 XP +$totalXp ($newDeals 单)');
-      return totalXp;
+        await _db.statsDao.updateStats(
+          totalXp: newTotalXp,
+          currentLevel: newLevel,
+        );
+
+        AppLogger.instance.info('XpService', '成交额外 XP +$totalXp ($newDeals 单)');
+        return totalXp;
+      });
     } catch (e, st) {
       AppLogger.instance.error('XpService', 'awardDealExtraXp 失败: $e',
           error: e, stackTrace: st);
@@ -207,64 +223,65 @@ class XpService {
   /// 2. 更新连续作战天数 (+1)
   /// 3. 防止同一天重复触发
   ///
+  /// 事务保证: 检查→写XP→更新streak→写标记 原子完成
   /// 返回 true 如果本次调用触发了连续作战 +1
   Future<bool> onDailyTasksCompleted() async {
     try {
       final now = DateTime.now();
       final dateKey = _dateKey(now);
-
-      // 检查今天是否已经触发过
       final completionKey = 'daily_completion_$dateKey';
-      final alreadyTriggered = await _db.settingDao.get(completionKey);
-      if (alreadyTriggered != null) {
-        return false; // 今天已经触发过
-      }
 
-      // 1. 发放完成奖励 XP
-      await _db.xpDao.insertXp(XpRecordsCompanion.insert(
-        customerId: const Value('daily'),
-        actionType: 'DAILY_COMPLETION',
-        xp: XpRewards.dailyCompletionBonus,
-      ));
+      return await _db.transaction(() async {
+        // 事务内检查: 今天是否已经触发过
+        final alreadyTriggered = await _db.settingDao.get(completionKey);
+        if (alreadyTriggered != null) {
+          return false; // 今天已经触发过
+        }
 
-      // 2. 更新连续作战天数
-      final stats = await _db.statsDao.getStats();
-      final today = DateTime(now.year, now.month, now.day);
-      final lastActive = stats.lastActiveDate != null
-          ? DateTime(stats.lastActiveDate!.year, stats.lastActiveDate!.month,
-              stats.lastActiveDate!.day)
-          : null;
+        // 1. 写 XP 记录
+        await _db.xpDao.insertXp(XpRecordsCompanion.insert(
+          customerId: const Value('daily'),
+          actionType: 'DAILY_COMPLETION',
+          xp: XpRewards.dailyCompletionBonus,
+        ));
 
-      int newStreakDays;
-      if (lastActive == null) {
-        newStreakDays = 1;
-      } else if (lastActive == today) {
-        // 今天已经活跃过 (但之前没有触发完成, 可能是首次完成)
-        newStreakDays = stats.streakDays > 0 ? stats.streakDays : 1;
-      } else if (lastActive == today.subtract(const Duration(days: 1))) {
-        newStreakDays = stats.streakDays + 1;
-      } else {
-        // 连续中断, 重新开始
-        newStreakDays = 1;
-      }
+        // 2. 计算新的连续天数
+        final stats = await _db.statsDao.getStats();
+        final today = DateTime(now.year, now.month, now.day);
+        final lastActive = stats.lastActiveDate != null
+            ? DateTime(stats.lastActiveDate!.year, stats.lastActiveDate!.month,
+                stats.lastActiveDate!.day)
+            : null;
 
-      // 3. 更新统计
-      final newTotalXp = stats.totalXp + XpRewards.dailyCompletionBonus;
-      final newLevel = AppLevels.getLevel(newTotalXp).level;
+        int newStreakDays;
+        if (lastActive == null) {
+          newStreakDays = 1;
+        } else if (lastActive == today) {
+          newStreakDays = stats.streakDays > 0 ? stats.streakDays : 1;
+        } else if (lastActive == today.subtract(const Duration(days: 1))) {
+          newStreakDays = stats.streakDays + 1;
+        } else {
+          newStreakDays = 1;
+        }
 
-      await _db.statsDao.updateStats(
-        totalXp: newTotalXp,
-        currentLevel: newLevel,
-        streakDays: newStreakDays,
-        lastActiveDate: now,
-      );
+        // 3. 更新统计 (totalXp + level + streakDays + lastActiveDate)
+        final newTotalXp = stats.totalXp + XpRewards.dailyCompletionBonus;
+        final newLevel = AppLevels.getLevel(newTotalXp).level;
 
-      // 标记今天已触发
-      await _db.settingDao.set(completionKey, '1');
+        await _db.statsDao.updateStats(
+          totalXp: newTotalXp,
+          currentLevel: newLevel,
+          streakDays: newStreakDays,
+          lastActiveDate: now,
+        );
 
-      AppLogger.instance.info('XpService',
-          '今日作战完成! +${XpRewards.dailyCompletionBonus} XP, 连续作战 $newStreakDays 天');
-      return true;
+        // 4. 写入完成标记 (防止重复触发)
+        await _db.settingDao.set(completionKey, '1');
+
+        AppLogger.instance.info('XpService',
+            '今日作战完成! +${XpRewards.dailyCompletionBonus} XP, 连续作战 $newStreakDays 天');
+        return true;
+      });
     } catch (e, st) {
       AppLogger.instance.error('XpService', 'onDailyTasksCompleted 失败: $e',
           error: e, stackTrace: st);
