@@ -65,6 +65,29 @@ class XpService {
     }
   }
 
+  /// 设置今日查询数 (直接输入)
+  Future<void> setQuery(int count) async {
+    final now = DateTime.now();
+    final dateKey = _dateKey(now);
+
+    try {
+      final previousToday = await _db.settingDao.getInt('queries_$dateKey');
+      await _db.settingDao.setInt('queries_$dateKey', count);
+
+      final currentTotal = await _db.settingDao.getInt('total_queries');
+      final delta = count - previousToday;
+      if (delta > 0) {
+        await _db.settingDao.setInt('total_queries', currentTotal + delta);
+      }
+
+      await _updateActiveStatus(now);
+    } catch (e, st) {
+      AppLogger.instance.error('XpService', 'setQuery 失败: $e',
+          error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
   /// 成交 +1
   Future<void> incrementDeal() async {
     final now = DateTime.now();
@@ -81,6 +104,29 @@ class XpService {
       await _updateActiveStatus(now);
     } catch (e, st) {
       AppLogger.instance.error('XpService', 'incrementDeal 失败: $e',
+          error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
+  /// 设置今日成交数 (直接输入)
+  Future<void> setDeal(int count) async {
+    final now = DateTime.now();
+    final dateKey = _dateKey(now);
+
+    try {
+      final previousToday = await _db.settingDao.getInt('deals_$dateKey');
+      await _db.settingDao.setInt('deals_$dateKey', count);
+
+      final currentTotal = await _db.settingDao.getInt('total_deals');
+      final delta = count - previousToday;
+      if (delta > 0) {
+        await _db.settingDao.setInt('total_deals', currentTotal + delta);
+      }
+
+      await _updateActiveStatus(now);
+    } catch (e, st) {
+      AppLogger.instance.error('XpService', 'setDeal 失败: $e',
           error: e, stackTrace: st);
       rethrow;
     }

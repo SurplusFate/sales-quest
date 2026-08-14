@@ -46,6 +46,22 @@ class QuickActionService {
     await achievementService.checkAndUnlock();
   }
 
+  /// 设置今日查询数
+  Future<void> setQuery(int count) async {
+    final xpService = _ref.read(xpServiceProvider);
+    final taskService = _ref.read(dailyTaskServiceProvider);
+    final achievementService = _ref.read(achievementServiceProvider);
+
+    await xpService.setQuery(count);
+
+    final newlyCompleted = await taskService.refreshTodayProgress();
+    for (final task in newlyCompleted) {
+      await xpService.awardTaskXp(task.taskId, task.xpReward);
+    }
+
+    await achievementService.checkAndUnlock();
+  }
+
   /// 成交 +1
   Future<void> incrementDeal() async {
     final xpService = _ref.read(xpServiceProvider);
@@ -53,6 +69,22 @@ class QuickActionService {
     final achievementService = _ref.read(achievementServiceProvider);
 
     await xpService.incrementDeal();
+
+    final newlyCompleted = await taskService.refreshTodayProgress();
+    for (final task in newlyCompleted) {
+      await xpService.awardTaskXp(task.taskId, task.xpReward);
+    }
+
+    await achievementService.checkAndUnlock();
+  }
+
+  /// 设置今日成交数
+  Future<void> setDeal(int count) async {
+    final xpService = _ref.read(xpServiceProvider);
+    final taskService = _ref.read(dailyTaskServiceProvider);
+    final achievementService = _ref.read(achievementServiceProvider);
+
+    await xpService.setDeal(count);
 
     final newlyCompleted = await taskService.refreshTodayProgress();
     for (final task in newlyCompleted) {

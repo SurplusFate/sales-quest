@@ -156,11 +156,12 @@ class _ScaffoldWithNav extends ConsumerWidget {
     final idx = _currentIndex(context);
     return Scaffold(
       body: child,
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showQuickAction(context, ref),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.edit_note),
+        label: const Text('快速记录'),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: NavigationBar(
         selectedIndex: idx,
         onDestinationSelected: (i) {
