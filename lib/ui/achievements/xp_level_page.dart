@@ -21,17 +21,12 @@ class XpLevelPage extends ConsumerWidget {
 
     final totalXp = stats?.totalXp ?? 0;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) context.go('/achievements');
-      },
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: const Text('等级'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/achievements'),
+            onPressed: () => context.pop(),
           ),
         ),
         body: ListView(
@@ -182,7 +177,6 @@ class XpLevelPage extends ConsumerWidget {
             );
           }),
         ],
-      ),
       ),
     );
   }

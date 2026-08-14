@@ -16,17 +16,12 @@ class CustomerDetailPage extends ConsumerWidget {
     final customerAsync = ref.watch(customerDetailProvider(customerId));
     final followUpsAsync = ref.watch(customerFollowUpsProvider(customerId));
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) context.go('/customers');
-      },
-      child: Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: Text(customerAsync.valueOrNull?.name ?? '客户详情'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/customers'),
+          onPressed: () => context.pop(),
         ),
         actions: [
           IconButton(
@@ -49,7 +44,6 @@ class CustomerDetailPage extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('加载失败: $e')),
-      ),
       ),
     );
   }
@@ -75,7 +69,7 @@ class CustomerDetailPage extends ConsumerWidget {
     if (confirmed == true) {
       await ref.read(deleteCustomerProvider(customerId).future);
       if (!context.mounted) return;
-      context.go('/customers');
+      context.pop();
     }
   }
 }

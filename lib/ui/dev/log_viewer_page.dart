@@ -61,17 +61,12 @@ class _LogViewerPageState extends State<LogViewerPage> {
         final filtered = _filterEntries(AppLogger.instance.entries);
         _scrollToBottom();
 
-        return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) context.go('/settings');
-          },
-          child: Scaffold(
+        return Scaffold(
             appBar: AppBar(
               title: const Text('运行日志'),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.go('/settings'),
+                onPressed: () => context.pop(),
               ),
               actions: [
                 IconButton(
@@ -128,7 +123,6 @@ class _LogViewerPageState extends State<LogViewerPage> {
                 ),
               ],
             ),
-          ),
         );
       },
     );

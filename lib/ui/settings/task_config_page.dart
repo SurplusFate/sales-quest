@@ -62,17 +62,12 @@ class _TaskConfigPageState extends ConsumerState<TaskConfigPage> {
 
   Widget _buildScaffold(bool locked) {
     final theme = Theme.of(context);
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) context.go('/settings');
-      },
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: const Text('基础任务设置'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/settings'),
+            onPressed: () => context.pop(),
           ),
         ),
         body: ListView(
@@ -240,7 +235,6 @@ class _TaskConfigPageState extends ConsumerState<TaskConfigPage> {
             const SizedBox(height: 32),
           ],
         ),
-      ),
     );
   }
 
@@ -290,7 +284,7 @@ class _TaskConfigPageState extends ConsumerState<TaskConfigPage> {
             duration: Duration(seconds: 1),
           ),
         );
-        context.go('/settings');
+        context.pop();
       }
     } catch (e) {
       if (mounted) {
