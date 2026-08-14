@@ -159,35 +159,45 @@ class _ScaffoldWithNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final idx = _currentIndex(context);
-    return Scaffold(
-      body: child,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showQuickAction(context, ref),
-        tooltip: '快速记录',
-        child: const Icon(Icons.edit_note),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: idx,
-        onDestinationSelected: (i) {
-          switch (AppTab.values[i]) {
-            case AppTab.home:
-              context.go('/');
-            case AppTab.customers:
-              context.go('/customers');
-            case AppTab.data:
-              context.go('/data');
-            case AppTab.achievements:
-              context.go('/achievements');
-          }
-        },
-        destinations: AppTab.values
-            .map((tab) => NavigationDestination(
-                  icon: Icon(tab.icon),
-                  selectedIcon: Icon(tab.activeIcon),
-                  label: tab.label,
-                ))
-            .toList(),
+    return PopScope(
+      // 首页 tab 允许系统返回 (退出 APP), 其他 tab 拦截返回键
+      canPop: idx == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          // 非首页 tab 按返回键 → 回到首页 tab
+          context.go('/');
+        }
+      },
+      child: Scaffold(
+        body: child,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _showQuickAction(context, ref),
+          tooltip: '快速记录',
+          child: const Icon(Icons.edit_note),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: idx,
+          onDestinationSelected: (i) {
+            switch (AppTab.values[i]) {
+              case AppTab.home:
+                context.go('/');
+              case AppTab.customers:
+                context.go('/customers');
+              case AppTab.data:
+                context.go('/data');
+              case AppTab.achievements:
+                context.go('/achievements');
+            }
+          },
+          destinations: AppTab.values
+              .map((tab) => NavigationDestination(
+                    icon: Icon(tab.icon),
+                    selectedIcon: Icon(tab.activeIcon),
+                    label: tab.label,
+                  ))
+              .toList(),
+        ),
       ),
     );
   }
