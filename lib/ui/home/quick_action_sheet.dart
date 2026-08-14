@@ -57,7 +57,7 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
     if (_savingMeet) return;
     setState(() => _savingMeet = true);
     try {
-      await ref.read(setPeopleSeenProvider(_meetCount).future);
+      await ref.read(quickActionServiceProvider).setPeopleSeen(_meetCount);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -79,7 +79,7 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
 
   Future<void> _incrementQuery() async {
     try {
-      await ref.read(incrementQueryProvider(null).future);
+      await ref.read(quickActionServiceProvider).incrementQuery();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -99,7 +99,7 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
 
   Future<void> _incrementDeal() async {
     try {
-      await ref.read(incrementDealProvider(null).future);
+      await ref.read(quickActionServiceProvider).incrementDeal();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
