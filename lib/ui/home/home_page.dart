@@ -229,7 +229,16 @@ class HomePage extends ConsumerWidget {
     if (getSaving()) return;
     setDialogState(() => setSaving(true));
     try {
-      final value = int.tryParse(controller.text.trim()) ?? 0;
+      final parsed = int.tryParse(controller.text.trim()) ?? 0;
+      if (parsed < 0) {
+        if (dialogContext.mounted) {
+          ScaffoldMessenger.of(dialogContext).showSnackBar(
+            const SnackBar(content: Text('数字不能为负数')),
+          );
+        }
+        return;
+      }
+      final value = parsed;
       await onSave(value);
       if (dialogContext.mounted) {
         Navigator.of(dialogContext).pop();
@@ -455,7 +464,7 @@ class _EditableStatCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          height: 95,
+          height: 116,
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),

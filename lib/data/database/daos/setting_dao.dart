@@ -27,7 +27,7 @@ class SettingDao extends DatabaseAccessor<AppDatabase> with _$SettingDaoMixin {
   /// 监听某个 key 的值变化
   Stream<String?> watchValue(String key) {
     return (select(settings)..where((t) => t.key.equals(key)))
-        .map((row) => row?.value)
+        .map((row) => row.value)
         .watchSingleOrNull();
   }
 

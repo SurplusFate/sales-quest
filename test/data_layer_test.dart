@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
 import 'package:sales_quest/data/database/app_database.dart';
@@ -138,25 +137,16 @@ void main() {
       final today = DateTime.now();
       final todayKey = dateKey(today);
 
-      // 第一天: 直接写 settings 模拟
-      await db.settingDao.setInt('people_seen_$todayKey', 100);
-      await db.settingDao.setInt('total_meets', 100);
-
-      // 第二天: 模拟 setPeopleSeen(50)
-      // 由于 setPeopleSeen 用 DateTime.now(), 我们直接手动计算
+      // 模拟前一天已有数据 (累计100)
       final yesterday = today.subtract(const Duration(days: 1));
       final yesterdayKey = dateKey(yesterday);
-
-      // 模拟前一天已有数据
       await db.settingDao.setInt('people_seen_$yesterdayKey', 100);
       await db.settingDao.setInt('total_meets', 100);
 
-      // 现在调用 setPeopleSeen(50) - 会用今天的 dateKey
+      // 第二天 (今天): 调用 setPeopleSeen(50)
+      // 今天旧值=0, 累计 = 100(昨天累计) - 0(今天旧值) + 50(今天新值) = 150
       await xpService.setPeopleSeen(50);
 
-      // 今天的值应为50, 累计 = 100 (昨天) - 0 (今天旧值) + 50 = 150?
-      // 不对, setPeopleSeen 读取的是今天的 previousToday, 然后更新 total
-      // total = total_old - today_old + today_new = 100 - 0 + 50 = 150
       expect(await db.settingDao.getInt('people_seen_$todayKey'), 50);
       expect(await db.settingDao.getInt('total_meets'), 150);
     });

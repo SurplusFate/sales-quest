@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database/app_database.dart';
 import '../models/enums.dart';
 import 'database_provider.dart';
-import 'service_providers.dart';
 
 /// 客户列表 stream
 final customerListProvider = StreamProvider<List<CustomerEntity>>((ref) {

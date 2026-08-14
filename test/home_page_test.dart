@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:sales_quest/data/database/app_database.dart';
 import 'package:sales_quest/providers/database_provider.dart';
-import 'package:sales_quest/providers/action_providers.dart';
 import 'package:sales_quest/ui/home/home_page.dart';
 import 'package:sales_quest/ui/home/quick_action_sheet.dart';
 import 'package:sales_quest/ui/settings/task_config_page.dart';
@@ -23,6 +22,19 @@ List<Override> createTestOverrides(AppDatabase db) {
   ];
 }
 
+/// 测试包装函数: 测试结束后显式卸载 widget 树,
+/// 确保 drift watch stream 的 pending timer 被清理, 避免 flutter_test 报错
+void testApp(String description, WidgetTesterCallback body) {
+  testWidgets(description, (tester) async {
+    try {
+      await body(tester);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+}
+
 void main() {
   late AppDatabase db;
 
@@ -35,7 +47,7 @@ void main() {
   });
 
   group('HomePage UI 测试', () {
-    testWidgets('首页应显示三个可编辑的统计卡片', (tester) async {
+    testApp('首页应显示三个可编辑的统计卡片', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -61,7 +73,7 @@ void main() {
       expect(find.byIcon(Icons.edit), findsNWidgets(3));
     });
 
-    testWidgets('点击统计卡片应弹出编辑对话框', (tester) async {
+    testApp('点击统计卡片应弹出编辑对话框', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -83,7 +95,7 @@ void main() {
       expect(find.text('取消'), findsOneWidget);
     });
 
-    testWidgets('在对话框中输入新值并保存应更新数据', (tester) async {
+    testApp('在对话框中输入新值并保存应更新数据', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -117,7 +129,7 @@ void main() {
       expect(find.text('50'), findsOneWidget);
     });
 
-    testWidgets('取消编辑不应修改数据', (tester) async {
+    testApp('取消编辑不应修改数据', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -146,7 +158,7 @@ void main() {
       expect(find.text('0'), findsNWidgets(3));
     });
 
-    testWidgets('首页应显示今日任务设置入口', (tester) async {
+    testApp('首页应显示今日任务设置入口', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -164,7 +176,7 @@ void main() {
       expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
     });
 
-    testWidgets('连续编辑应正确更新累计值', (tester) async {
+    testApp('连续编辑应正确更新累计值', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -199,7 +211,7 @@ void main() {
       expect(total, 80, reason: '累计应为80 (100→80)');
     });
 
-    testWidgets('快速记录面板应能批量修改三个数据', (tester) async {
+    testApp('快速记录面板应能批量修改三个数据', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -230,7 +242,7 @@ void main() {
   });
 
   group('TaskConfigPage UI 测试', () {
-    testWidgets('任务配置页面应显示三个指标和推荐按钮', (tester) async {
+    testApp('任务配置页面应显示三个指标和推荐按钮', (tester) async {
       final goRouter = GoRouter(
         routes: [
           GoRoute(
@@ -272,9 +284,10 @@ void main() {
       expect(find.text('默认不参与'), findsOneWidget);
     });
 
-    testWidgets('全新数据库默认应显示推荐值 (见人100/查询5/成交不参与)',
+    testApp('全新数据库默认应显示推荐值 (见人100/查询5/成交不参与)',
         (tester) async {
       final goRouter = GoRouter(
+        initialLocation: '/settings/task-config',
         routes: [
           GoRoute(
             path: '/settings/task-config',
@@ -306,7 +319,7 @@ void main() {
   });
 
   group('QuickActionSheet 测试', () {
-    testWidgets('快速记录面板应显示三个输入框和保存按钮', (tester) async {
+    testApp('快速记录面板应显示三个输入框和保存按钮', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -334,7 +347,7 @@ void main() {
       expect(find.text('单'), findsOneWidget);
     });
 
-    testWidgets('快速记录面板应预填当前数据', (tester) async {
+    testApp('快速记录面板应预填当前数据', (tester) async {
       // 先写入一些数据
       final now = DateTime.now();
       final dk =
@@ -361,7 +374,7 @@ void main() {
   });
 
   group('端到端数据流测试', () {
-    testWidgets('首页编辑 → 累计值正确 → 任务进度更新', (tester) async {
+    testApp('首页编辑 → 累计值正确 → 任务进度更新', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: createTestOverrides(db),
@@ -373,7 +386,6 @@ void main() {
       await tester.pumpAndSettle();
 
       // 确保今日任务已创建 (默认配置: 见人100/查询5/成交不参与)
-      final taskService = db;
       // 等待 ensureTodayTasks 通过 provider 触发
       await tester.pumpAndSettle();
 
@@ -403,4 +415,175 @@ void main() {
       expect(totalQuery, 5, reason: '累计查询应为5');
     });
   });
+
+  group('需求1: 基础任务锁定闭环', () {
+    testApp('当天产生数据后今日任务配置锁定不可修改', (tester) async {
+      // 用真实路由跳转到任务配置页
+      final goRouter = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => Scaffold(body: const HomePage()),
+          ),
+          GoRoute(
+            path: '/settings/task-config',
+            builder: (context, state) => const TaskConfigPage(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: createTestOverrides(db),
+          child: MaterialApp.router(routerConfig: goRouter),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 产生数据: 见人 100
+      await tester.tap(find.text('0').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '100');
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+
+      // 数据已产生 → 今日任务应锁定
+      await tester.pumpAndSettle();
+      final locked =
+          await db.settingDao.get('task_config_${_dk()}_locked');
+      expect(locked, '1', reason: '产生数据后今日任务应锁定');
+
+      // 跳转到任务配置页, 应显示锁定提示
+      goRouter.go('/settings/task-config');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('已锁定'), findsOneWidget,
+          reason: '锁定后配置页应显示锁定提示');
+
+      // 推荐按钮不应显示 (锁定时不可修改)
+      expect(find.textContaining('使用推荐目标'), findsNothing);
+    });
+
+    testApp('锁定后不允许通过配置页修改目标', (tester) async {
+      // 先产生数据锁定
+      await db.settingDao.setInt('people_seen_${_dk()}', 100);
+      await db.settingDao.setInt('task_config_${_dk()}_locked', 1);
+
+      final goRouter = GoRouter(
+        initialLocation: '/settings/task-config',
+        routes: [
+          GoRoute(
+            path: '/settings/task-config',
+            builder: (context, state) => const TaskConfigPage(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: createTestOverrides(db),
+          child: MaterialApp.router(routerConfig: goRouter),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 应显示锁定提示
+      expect(find.textContaining('已锁定'), findsOneWidget);
+
+      // 不应出现保存按钮
+      expect(find.text('保存'), findsNothing);
+      // 不应出现推荐按钮
+      expect(find.textContaining('使用推荐目标'), findsNothing);
+      // 目标调整按钮应禁用 (通过 IconButton onPressed 判断)
+      final plusButton = tester.widget<IconButton>(
+        find.ancestor(
+          of: find.byIcon(Icons.add_circle_outline).first,
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(plusButton.onPressed, isNull);
+    });
+  });
+
+  group('需求2: 直接输入闭环', () {
+    testApp('负数输入被拒绝', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: createTestOverrides(db),
+          child: MaterialApp(
+            home: Scaffold(body: const HomePage()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('0').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '-5');
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+
+      // 应提示负数拒绝, 对话框不关闭
+      expect(find.text('数字不能为负数'), findsOneWidget);
+      expect(find.text('修改 见人数'), findsOneWidget);
+
+      // 数据不应被修改
+      final today = await db.settingDao.getInt('people_seen_${_dk()}');
+      expect(today, 0);
+    });
+
+    testApp('快速记录面板批量输入保持累计公式正确', (tester) async {
+      // 已有旧数据: 见人100 查询10 成交3
+      final dk = _dk();
+      await db.settingDao.setInt('people_seen_$dk', 100);
+      await db.settingDao.setInt('queries_$dk', 10);
+      await db.settingDao.setInt('deals_$dk', 3);
+      await db.settingDao.setInt('total_meets', 100);
+      await db.settingDao.setInt('total_queries', 10);
+      await db.settingDao.setInt('total_deals', 3);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: createTestOverrides(db),
+          child: const MaterialApp(
+            home: Scaffold(body: QuickActionSheet()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 面板预填当前值
+      expect(find.text('100'), findsOneWidget);
+      expect(find.text('10'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+
+      // 批量修改: 见人80 查询20 成交5
+      await tester.enterText(
+          find.byType(TextField).at(0), '80');
+      await tester.enterText(
+          find.byType(TextField).at(1), '20');
+      await tester.enterText(
+          find.byType(TextField).at(2), '5');
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+
+      // 当天值更新
+      expect(await db.settingDao.getInt('people_seen_$dk'), 80);
+      expect(await db.settingDao.getInt('queries_$dk'), 20);
+      expect(await db.settingDao.getInt('deals_$dk'), 5);
+
+      // 累计 = 旧累计 - 当天旧值 + 当天新值
+      expect(await db.settingDao.getInt('total_meets'), 80);
+      expect(await db.settingDao.getInt('total_queries'), 20);
+      expect(await db.settingDao.getInt('total_deals'), 5);
+    });
+  });
+}
+
+/// 测试用日期 key
+String _dk() {
+  final now = DateTime.now();
+  return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 }

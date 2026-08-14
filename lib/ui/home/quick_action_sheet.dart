@@ -16,15 +16,31 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
   final _queryController = TextEditingController();
   final _dealController = TextEditingController();
   bool _saving = false;
+  bool _userEdited = false;
 
   @override
   void initState() {
     super.initState();
+    // 尝试立即读取当前值 (若 stream 已就绪)
     final stats =
         ref.read(todayBattleStatsProvider).valueOrNull ?? const BattleStats();
     _meetController.text = '${stats.peopleSeen}';
     _queryController.text = '${stats.queries}';
     _dealController.text = '${stats.deals}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 响应式监听: stream 数据到达/变化时预填 (用户未手动编辑时)
+    ref.listen(todayBattleStatsProvider, (prev, next) {
+      if (_userEdited) return;
+      final stats = next.valueOrNull;
+      if (stats == null) return;
+      _meetController.text = '${stats.peopleSeen}';
+      _queryController.text = '${stats.queries}';
+      _dealController.text = '${stats.deals}';
+    });
+    return _buildSheet(context);
   }
 
   @override
@@ -39,9 +55,22 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      final meet = int.tryParse(_meetController.text.trim()) ?? 0;
-      final query = int.tryParse(_queryController.text.trim()) ?? 0;
-      final deal = int.tryParse(_dealController.text.trim()) ?? 0;
+      final meetRaw = int.tryParse(_meetController.text.trim()) ?? 0;
+      final queryRaw = int.tryParse(_queryController.text.trim()) ?? 0;
+      final dealRaw = int.tryParse(_dealController.text.trim()) ?? 0;
+
+      if (meetRaw < 0 || queryRaw < 0 || dealRaw < 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('数字不能为负数')),
+          );
+        }
+        return;
+      }
+
+      final meet = meetRaw;
+      final query = queryRaw;
+      final deal = dealRaw;
 
       final service = ref.read(quickActionServiceProvider);
       await service.setPeopleSeen(meet);
@@ -68,8 +97,7 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildSheet(BuildContext context) {
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
@@ -114,6 +142,7 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
                   icon: Icons.groups,
                   color: Colors.blue,
                   suffix: '人',
+                  onChanged: (_) => _userEdited = true,
                 ),
                 const SizedBox(height: 12),
                 _InputField(
@@ -122,6 +151,7 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
                   icon: Icons.search,
                   color: Colors.purple,
                   suffix: '次',
+                  onChanged: (_) => _userEdited = true,
                 ),
                 const SizedBox(height: 12),
                 _InputField(
@@ -130,6 +160,7 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
                   icon: Icons.celebration,
                   color: Colors.red,
                   suffix: '单',
+                  onChanged: (_) => _userEdited = true,
                 ),
               ],
             ),
@@ -173,6 +204,7 @@ class _InputField extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String suffix;
+  final ValueChanged<String>? onChanged;
 
   const _InputField({
     required this.controller,
@@ -180,6 +212,7 @@ class _InputField extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.suffix,
+    this.onChanged,
   });
 
   @override
@@ -187,6 +220,7 @@ class _InputField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: color),
