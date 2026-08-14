@@ -31,35 +31,35 @@ class HomePage extends ConsumerWidget {
     final totalXp = userStats?.totalXp ?? 0;
     final streakDays = userStats?.streakDays ?? 0;
 
-    return ListView(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-      children: [
-        // === 等级卡片 ===
-        _LevelCard(
-          level: level.level,
-          title: level.title,
-          totalXp: totalXp,
-          currentLevelXp: level.xpRequired,
-          nextLevelXp: nextLevel?.xpRequired ?? level.xpRequired,
-          progress: progress,
-          streakDays: streakDays,
-        ),
-        const SizedBox(height: 12),
-
-        // === 今日作战 (可点击直接编辑) ===
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            '今日作战 (点击数字修改)',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // === 等级卡片 ===
+          _LevelCard(
+            level: level.level,
+            title: level.title,
+            totalXp: totalXp,
+            currentLevelXp: level.xpRequired,
+            nextLevelXp: nextLevel?.xpRequired ?? level.xpRequired,
+            progress: progress,
+            streakDays: streakDays,
           ),
-        ),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          const SizedBox(height: 12),
+
+          // === 今日作战 (可点击直接编辑) ===
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              '今日作战 (点击数字修改)',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+          Row(
             children: [
               Expanded(
                 child: _EditableStatCard(
@@ -116,34 +116,34 @@ class HomePage extends ConsumerWidget {
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-        // === 今日任务 ===
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '今日任务',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
+          // === 今日任务 ===
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '今日任务',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.settings_outlined, size: 20),
-              tooltip: '基础任务设置',
-              onPressed: () => context.push('/settings/task-config'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (tasks.isEmpty)
-          _EmptyTaskCard(config: config)
-        else
-          ..._buildTaskRows(tasks),
-      ],
+              IconButton(
+                icon: const Icon(Icons.settings_outlined, size: 20),
+                tooltip: '基础任务设置',
+                onPressed: () => context.push('/settings/task-config'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (tasks.isEmpty)
+            _EmptyTaskCard(config: config)
+          else
+            ..._buildTaskRows(tasks),
+        ],
+      ),
     );
   }
 
@@ -457,44 +457,53 @@ class _EditableStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 6),
-            Text(
-              '$value',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall,
-                  overflow: TextOverflow.ellipsis,
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 88),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '$value',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
-                const SizedBox(width: 2),
-                Icon(Icons.edit, size: 10,
-                    color: theme.colorScheme.onSurfaceVariant),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelSmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(Icons.edit, size: 10,
+                      color: theme.colorScheme.onSurfaceVariant),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
