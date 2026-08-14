@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/database/app_database.dart';
 import '../../providers/stats_providers.dart';
+import '../../providers/action_providers.dart';
 import '../../providers/task_providers.dart';
 import '../../services/daily_task_service.dart';
 
 /// 作战首页 - V1.0 核心 Dashboard
 ///
-/// 作为 ShellRoute 的 child, 不嵌套 Scaffold。
-/// 顶部等级卡片 + 今日作战 3 数字 + 今日任务行, 紧凑布局。
+/// 布局设计 (户外单手操作优先):
+/// 1. 顶部: 等级卡片 (紧凑, 仅展示状态)
+/// 2. 中部: 三个大数字卡片 (可点击直接编辑, 主要操作方式)
+/// 3. 下部: 今日任务进度 (含任务配置入口)
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -28,7 +32,7 @@ class HomePage extends ConsumerWidget {
     final streakDays = userStats?.streakDays ?? 0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -42,49 +46,215 @@ class HomePage extends ConsumerWidget {
             progress: progress,
             streakDays: streakDays,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
-          // === 今日作战 ===
-          const _SectionTitle('今日作战'),
-          const SizedBox(height: 8),
+          // === 今日作战 (可点击直接编辑) ===
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              '今日作战 (点击数字修改)',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
           Row(
             children: [
               Expanded(
-                child: _BigStatCard(
-                    stats.peopleSeen, '见人', Icons.groups, Colors.blue),
+                child: _EditableStatCard(
+                  value: stats.peopleSeen,
+                  label: '见人',
+                  icon: Icons.groups,
+                  color: Colors.blue,
+                  onTap: () => _editMetric(
+                    context,
+                    ref,
+                    label: '见人数',
+                    currentValue: stats.peopleSeen,
+                    suffix: '人',
+                    onSave: (v) =>
+                        ref.read(quickActionServiceProvider).setPeopleSeen(v),
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _BigStatCard(
-                    stats.queries, '查询', Icons.search, Colors.purple),
+                child: _EditableStatCard(
+                  value: stats.queries,
+                  label: '查询',
+                  icon: Icons.search,
+                  color: Colors.purple,
+                  onTap: () => _editMetric(
+                    context,
+                    ref,
+                    label: '查询数',
+                    currentValue: stats.queries,
+                    suffix: '次',
+                    onSave: (v) =>
+                        ref.read(quickActionServiceProvider).setQuery(v),
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _BigStatCard(
-                    stats.deals, '成交', Icons.celebration, Colors.red),
+                child: _EditableStatCard(
+                  value: stats.deals,
+                  label: '成交',
+                  icon: Icons.celebration,
+                  color: Colors.red,
+                  onTap: () => _editMetric(
+                    context,
+                    ref,
+                    label: '成交数',
+                    currentValue: stats.deals,
+                    suffix: '单',
+                    onSave: (v) =>
+                        ref.read(quickActionServiceProvider).setDeal(v),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // === 今日任务 ===
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '今日任务',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined, size: 20),
+                tooltip: '基础任务设置',
+                onPressed: () => context.push('/settings/task-config'),
               ),
             ],
           ),
           const SizedBox(height: 8),
-
-          // === 今日任务 ===
-          const _SectionTitle('今日任务'),
-          const SizedBox(height: 8),
           if (tasks.isEmpty)
             _EmptyTaskCard(config: config)
           else
-            ..._buildTaskRows(tasks, config),
+            ..._buildTaskRows(tasks),
         ],
       ),
     );
   }
 
-  List<Widget> _buildTaskRows(
-      List<DailyTaskEntity> tasks, DailyTaskConfig? config) {
+  /// 弹出快捷编辑对话框
+  void _editMetric(
+    BuildContext context,
+    WidgetRef ref, {
+    required String label,
+    required int currentValue,
+    required String suffix,
+    required Future<void> Function(int) onSave,
+  }) {
+    final controller = TextEditingController(text: '$currentValue');
+    bool saving = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text('修改 $label'),
+              content: TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: label,
+                  suffixText: suffix,
+                  border: const OutlineInputBorder(),
+                ),
+                onSubmitted: (_) async {
+                  await _doSave(
+                    dialogContext,
+                    setDialogState,
+                    controller,
+                    onSave,
+                    () => saving,
+                    (v) => saving = v,
+                  );
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () => _doSave(
+                            dialogContext,
+                            setDialogState,
+                            controller,
+                            onSave,
+                            () => saving,
+                            (v) => saving = v,
+                          ),
+                  child: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('保存'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// 执行保存操作
+  Future<void> _doSave(
+    BuildContext dialogContext,
+    StateSetter setDialogState,
+    TextEditingController controller,
+    Future<void> Function(int) onSave,
+    bool Function() getSaving,
+    void Function(bool) setSaving,
+  ) async {
+    if (getSaving()) return;
+    setDialogState(() => setSaving(true));
+    try {
+      final value = int.tryParse(controller.text.trim()) ?? 0;
+      await onSave(value);
+      if (dialogContext.mounted) {
+        Navigator.of(dialogContext).pop();
+        ScaffoldMessenger.of(dialogContext).showSnackBar(
+          const SnackBar(
+            content: Text('已保存'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (dialogContext.mounted) {
+        ScaffoldMessenger.of(dialogContext).showSnackBar(
+          SnackBar(content: Text('保存失败: $e')),
+        );
+      }
+    } finally {
+      if (dialogContext.mounted) setDialogState(() => setSaving(false));
+    }
+  }
+
+  List<Widget> _buildTaskRows(List<DailyTaskEntity> tasks) {
     final List<Widget> rows = [];
     for (var i = 0; i < tasks.length; i++) {
       final t = tasks[i];
-      // 获取指标信息
       String label;
       IconData icon;
       Color color;
@@ -211,7 +381,8 @@ class _LevelCard extends StatelessWidget {
                     if (streakDays > 0) ...[
                       const SizedBox(width: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.orange.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
@@ -235,8 +406,8 @@ class _LevelCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       xpText,
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -258,44 +429,66 @@ class _LevelCard extends StatelessWidget {
   }
 }
 
-/// 大数字统计卡片 (今日作战: 见人/查询/成交)
-class _BigStatCard extends StatelessWidget {
+/// 可编辑的大数字统计卡片 — 点击直接修改
+class _EditableStatCard extends StatelessWidget {
   final int value;
   final String label;
   final IconData icon;
   final Color color;
+  final VoidCallback onTap;
 
-  const _BigStatCard(this.value, this.label, this.icon, this.color);
+  const _EditableStatCard({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      height: 85,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.20), width: 1),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              '$value',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
+        child: Container(
+          height: 95,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
           ),
-          const SizedBox(height: 2),
-          Text(label, style: theme.textTheme.labelSmall),
-        ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '$value',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(label, style: theme.textTheme.labelSmall),
+                  const SizedBox(width: 2),
+                  Icon(Icons.edit, size: 10,
+                      color: theme.colorScheme.onSurfaceVariant),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -388,7 +581,7 @@ class _EmptyTaskCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             config == null
-                ? '点击设置今日基础任务'
+                ? '点击右侧设置按钮配置今日基础任务'
                 : '今日未设置任何基础任务\n请在设置中添加指标',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -397,21 +590,6 @@ class _EmptyTaskCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// 区块标题
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Text(
-      text,
-      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
     );
   }
 }
