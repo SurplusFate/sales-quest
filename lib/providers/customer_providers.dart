@@ -64,7 +64,7 @@ final quickRecordProvider =
       salesStage: stage.code,
       nextAction: null,
       nextFollowUpAt: null,
-      note: null,
+      note: params.note,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     ),
@@ -80,6 +80,7 @@ final quickRecordProvider =
     valueScore: Value(valueScore),
     valueLevel: Value(valueLevel.code),
     salesStage: Value(stage.code),
+    note: params.note != null && params.note!.isNotEmpty ? Value(params.note) : const Value.absent(),
   ));
 
   // 2. 记录事件 + XP
@@ -368,6 +369,7 @@ class QuickRecordParams {
   final Operator operator;
   final int? selfReportedCost;
   final CustomerStatus status;
+  final String? note;
 
   const QuickRecordParams({
     required this.name,
@@ -375,6 +377,7 @@ class QuickRecordParams {
     required this.operator,
     this.selfReportedCost,
     required this.status,
+    this.note,
   });
 }
 
