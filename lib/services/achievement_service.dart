@@ -1,7 +1,8 @@
 import '../data/database/app_database.dart';
 import '../core/app_constants.dart';
 
-/// 成就服务 (PRD §15)
+/// V1.0 成就服务
+/// 基于 Settings 中的累计数据检查成就
 class AchievementService {
   final AppDatabase _db;
 
@@ -27,34 +28,40 @@ class AchievementService {
 
   Future<bool> _checkCondition(AchievementDef def) async {
     final now = DateTime.now();
+    final dateKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
     switch (def.type) {
-      case AchievementType.firstOpen:
-        final count = await _db.eventDao.countEventTotal('OPEN');
-        return count >= def.target;
+      case AchievementType.firstMeet:
+        final total = await _db.settingDao.getInt('total_meets');
+        return total >= def.target;
 
       case AchievementType.firstQuery:
-        final count = await _db.eventDao.countEventTotal('QUERY');
-        return count >= def.target;
+        final total = await _db.settingDao.getInt('total_queries');
+        return total >= def.target;
+
+      case AchievementType.firstDeal:
+        final total = await _db.settingDao.getInt('total_deals');
+        return total >= def.target;
+
+      case AchievementType.totalMeet:
+        final total = await _db.settingDao.getInt('total_meets');
+        return total >= def.target;
 
       case AchievementType.totalQuery:
-        final count = await _db.eventDao.countEventTotal('QUERY');
-        return count >= def.target;
+        final total = await _db.settingDao.getInt('total_queries');
+        return total >= def.target;
 
-      case AchievementType.totalOpen:
-        final count = await _db.eventDao.countEventTotal('OPEN');
-        return count >= def.target;
-
-      case AchievementType.totalWon:
-        final count = await _db.eventDao.countEventTotal('WON');
-        return count >= def.target;
+      case AchievementType.totalDeal:
+        final total = await _db.settingDao.getInt('total_deals');
+        return total >= def.target;
 
       case AchievementType.dailyQuery:
-        final count = await _db.eventDao.countEventToday('QUERY', now);
-        return count >= def.target;
+        final today = await _db.settingDao.getInt('queries_$dateKey');
+        return today >= def.target;
 
-      case AchievementType.dailyWon:
-        final count = await _db.eventDao.countEventToday('WON', now);
-        return count >= def.target;
+      case AchievementType.dailyDeal:
+        final today = await _db.settingDao.getInt('deals_$dateKey');
+        return today >= def.target;
 
       case AchievementType.streakDays:
         final stats = await _db.statsDao.getStats();

@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../data/database/app_database.dart';
 import '../../models/enums.dart';
 import '../../providers/customer_providers.dart';
 
-class CustomerListPage extends ConsumerStatefulWidget {
+/// 客户列表页 - 只展示值得跟进的客户
+class CustomerListPage extends ConsumerWidget {
   const CustomerListPage({super.key});
 
   @override
-  ConsumerState<CustomerListPage> createState() => _CustomerListPageState();
-}
-
-class _CustomerListPageState extends ConsumerState<CustomerListPage> {
-  String _search = '';
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final customersAsync = ref.watch(customerListProvider);
 
     return Scaffold(
@@ -24,52 +19,28 @@ class _CustomerListPageState extends ConsumerState<CustomerListPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.person_add_outlined),
+            tooltip: '添加客户',
             onPressed: () => context.push('/customer/new'),
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: '搜索客户...',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
-              ),
-              onChanged: (v) => setState(() => _search = v.toLowerCase()),
-            ),
-          ),
-        ),
       ),
       body: customersAsync.when(
         data: (customers) {
-          var filtered = customers;
-          if (_search.isNotEmpty) {
-            filtered = customers
-                .where((c) =>
-                    c.name.toLowerCase().contains(_search) ||
-                    (c.phone.isNotEmpty && c.phone.contains(_search)))
-                .toList();
+          // 只展示值得跟进的客户: 已成交的不在跟进列表中展示
+          final worthFollowing = customers
+              .where((c) => CustomerStage.fromCode(c.salesStage) != CustomerStage.won)
+              .toList();
+
+          if (worthFollowing.isEmpty) {
+            return const _EmptyState();
           }
-          if (filtered.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.people_outline, size: 64, color: Theme.of(context).colorScheme.outline),
-                  const SizedBox(height: 16),
-                  const Text('暂无客户'),
-                  const SizedBox(height: 8),
-                  FilledButton.tonal(
-                    onPressed: () => context.push('/quick-record'),
-                    child: const Text('快速记录客户'),
-                  ),
-                ],
-              ),
-            );
-          }
-          return _CustomerList(customers: filtered);
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            itemCount: worthFollowing.length,
+            itemBuilder: (context, index) {
+              return _CustomerTile(customer: worthFollowing[index]);
+            },
+          );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('加载失败: $e')),
@@ -78,126 +49,140 @@ class _CustomerListPageState extends ConsumerState<CustomerListPage> {
   }
 }
 
-class _CustomerList extends StatelessWidget {
-  final List<dynamic> customers;
-  const _CustomerList({required this.customers});
+/// 空列表提示
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
-    // 按"下一步动作"分组 (PRD §6)
-    final today = DateTime.now();
-    final todayStart = DateTime(today.year, today.month, today.day);
-
-    final todayFollowUp = <dynamic>[];
-    final others = <dynamic>[];
-
-    for (final c in customers) {
-      if (c.nextFollowUpAt != null && c.nextFollowUpAt.isAfter(todayStart)) {
-        todayFollowUp.add(c);
-      } else {
-        others.add(c);
-      }
-    }
-
-    // 按价值排序
-    todayFollowUp.sort((a, b) => b.valueScore.compareTo(a.valueScore));
-    others.sort((a, b) => b.valueScore.compareTo(a.valueScore));
-
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      children: [
-        if (todayFollowUp.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text('今天需要处理 (${todayFollowUp.length})',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                    )),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.people_outline,
+            size: 64,
+            color: Theme.of(context).colorScheme.outline,
           ),
-          ...todayFollowUp.map((c) => _CustomerCard(customer: c, context: context)),
+          const SizedBox(height: 16),
+          const Text('还没有客户, 点击右上角添加'),
         ],
-        if (others.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text('其他客户 (${others.length})',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    )),
-          ),
-          ...others.map((c) => _CustomerCard(customer: c, context: context)),
-        ],
-      ],
+      ),
     );
   }
 }
 
-class _CustomerCard extends StatelessWidget {
-  final dynamic customer;
-  final BuildContext context;
-
-  const _CustomerCard({required this.customer, required this.context});
+/// 单个客户列表项
+class _CustomerTile extends StatelessWidget {
+  final CustomerEntity customer;
+  const _CustomerTile({required this.customer});
 
   @override
   Widget build(BuildContext context) {
-    final stage = SalesStage.fromCode(customer.salesStage as String);
-    final valueLevel = CustomerValueLevel.fromScore(customer.valueScore as int);
-    final operator = Operator.fromCode(customer.operator as String);
+    final operator = Operator.fromCode(customer.operator);
+    final stage = CustomerStage.fromCode(customer.salesStage);
     final cost = customer.actualCost ?? customer.selfReportedCost;
-    final hasFollowUp = customer.nextFollowUpAt != null;
+    final theme = Theme.of(context);
+    final initial = customer.name.isEmpty ? '?' : customer.name.characters.first;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Row(
-          children: [
-            Text(customer.name as String, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            if (valueLevel == CustomerValueLevel.high || valueLevel == CustomerValueLevel.core)
-              const Text('🔥', style: TextStyle(fontSize: 16))
-            else if (stage == SalesStage.followUp)
-              const Text('🟡', style: TextStyle(fontSize: 16)),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 8,
-              children: [
-                if (operator != Operator.unknown)
-                  Chip(label: Text(operator.label), visualDensity: VisualDensity.compact, padding: EdgeInsets.zero),
-                if (cost != null)
-                  Chip(label: Text('$cost元'), visualDensity: VisualDensity.compact, padding: EdgeInsets.zero),
-                Chip(
-                  label: Text(stage.label),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                ),
-              ],
-            ),
-            if (hasFollowUp) ...[
-              const SizedBox(height: 4),
-              Text(
-                '下次: ${_formatDate(customer.nextFollowUpAt)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.primary,
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: InkWell(
+        onTap: () => context.push('/customer/${customer.id}'),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+                child: Text(initial),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customer.name,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _Tag(label: operator.label, color: _operatorColor(operator)),
+                        _Tag(label: stage.label, color: _stageColor(stage)),
+                        if (cost != null)
+                          _Tag(label: '$cost元', color: theme.colorScheme.primary),
+                      ],
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
             ],
-          ],
+          ),
         ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => GoRouter.of(context).push('/customer/${customer.id}'),
       ),
     );
   }
+}
 
-  String _formatDate(DateTime dt) {
-    return '${dt.month}/${dt.day}';
+/// 小标签 (Material 3 tonal 风格)
+class _Tag extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _Tag({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+Color _operatorColor(Operator op) {
+  switch (op) {
+    case Operator.mobile:
+      return Colors.blue;
+    case Operator.unicom:
+      return Colors.red;
+    case Operator.telecom:
+      return Colors.teal;
+    case Operator.unknown:
+      return Colors.blueGrey;
+  }
+}
+
+Color _stageColor(CustomerStage stage) {
+  switch (stage) {
+    case CustomerStage.new_:
+      return Colors.blueGrey;
+    case CustomerStage.contacted:
+      return Colors.blue;
+    case CustomerStage.queried:
+      return Colors.deepPurple;
+    case CustomerStage.followUp:
+      return Colors.orange;
+    case CustomerStage.won:
+      return Colors.green;
   }
 }

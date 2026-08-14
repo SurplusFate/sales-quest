@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/app_logger.dart';
 import '../ui/home/home_page.dart';
+import '../ui/home/quick_action_sheet.dart';
 import '../ui/customers/customer_list_page.dart';
 import '../ui/customers/customer_detail_page.dart';
 import '../ui/customers/customer_form_page.dart';
-import '../ui/customers/quick_record_page.dart';
-import '../ui/data/funnel_page.dart';
 import '../ui/data/analytics_page.dart';
-import '../ui/tasks/task_list_page.dart';
 import '../ui/achievements/xp_level_page.dart';
 import '../ui/achievements/achievement_page.dart';
 import '../ui/settings/settings_page.dart';
@@ -60,12 +59,6 @@ class AppRouter {
             GoRoute(
               path: '/data',
               builder: (context, state) => const AnalyticsPage(),
-              routes: [
-                GoRoute(
-                  path: 'funnel',
-                  builder: (context, state) => const FunnelPage(),
-                ),
-              ],
             ),
             GoRoute(
               path: '/achievements',
@@ -80,10 +73,6 @@ class AppRouter {
           ],
         ),
         // 非 shell 路由 (全屏页面)
-        GoRoute(
-          path: '/quick-record',
-          builder: (context, state) => const QuickRecordPage(),
-        ),
         GoRoute(
           path: '/customer/new',
           builder: (context, state) => const CustomerFormPage(customerId: null),
@@ -101,10 +90,6 @@ class AppRouter {
           ),
         ),
         GoRoute(
-          path: '/tasks',
-          builder: (context, state) => const TaskListPage(),
-        ),
-        GoRoute(
           path: '/settings',
           builder: (context, state) => const SettingsPage(),
         ),
@@ -115,6 +100,19 @@ class AppRouter {
       ],
     );
   }
+}
+
+/// 弹出快速记录面板 (取代旧的 /quick-record 导航)
+void _showQuickAction(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => const QuickActionSheet(),
+  );
 }
 
 /// 路由观察者: 记录所有页面跳转
@@ -140,8 +138,8 @@ class _RouteLogger extends NavigatorObserver {
   }
 }
 
-/// 带底部导航的 Scaffold
-class _ScaffoldWithNav extends StatelessWidget {
+/// 带底部导航的 Scaffold (ConsumerWidget 以使用 ref)
+class _ScaffoldWithNav extends ConsumerWidget {
   final Widget child;
   const _ScaffoldWithNav({required this.child});
 
@@ -154,12 +152,12 @@ class _ScaffoldWithNav extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final idx = _currentIndex(context);
     return Scaffold(
       body: child,
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/quick-record'),
+        onPressed: () => _showQuickAction(context, ref),
         child: const Icon(Icons.add),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,

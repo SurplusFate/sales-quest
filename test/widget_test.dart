@@ -4,23 +4,16 @@ import 'package:sales_quest/models/enums.dart';
 
 void main() {
   group('Enums', () {
-    test('SalesStage fromCode', () {
-      expect(SalesStage.fromCode('NEW'), SalesStage.new_);
-      expect(SalesStage.fromCode('WON'), SalesStage.won);
-      expect(SalesStage.fromCode('INVALID'), SalesStage.new_);
+    test('CustomerStage fromCode', () {
+      expect(CustomerStage.fromCode('NEW'), CustomerStage.new_);
+      expect(CustomerStage.fromCode('WON'), CustomerStage.won);
+      expect(CustomerStage.fromCode('INVALID'), CustomerStage.new_);
     });
 
-    test('EventType xp values', () {
-      expect(EventType.open.xp, 1);
-      expect(EventType.query.xp, 15);
-      expect(EventType.won.xp, 50);
-    });
-
-    test('CustomerValueLevel fromScore', () {
-      expect(CustomerValueLevel.fromScore(10), CustomerValueLevel.low);
-      expect(CustomerValueLevel.fromScore(50), CustomerValueLevel.normal);
-      expect(CustomerValueLevel.fromScore(70), CustomerValueLevel.high);
-      expect(CustomerValueLevel.fromScore(100), CustomerValueLevel.core);
+    test('CoreMetric labels', () {
+      expect(CoreMetric.meet.label, '见人');
+      expect(CoreMetric.query.label, '查询');
+      expect(CoreMetric.deal.label, '成交');
     });
 
     test('Operator fromCode', () {

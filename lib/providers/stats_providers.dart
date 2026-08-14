@@ -1,9 +1,10 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/app_constants.dart';
 import '../data/database/app_database.dart';
-import '../models/enums.dart';
 import 'database_provider.dart';
+
+String _dateKey(DateTime dt) =>
+    '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 
 /// 用户统计 stream
 final userStatsProvider = StreamProvider<UserStatEntity>((ref) {
@@ -31,52 +32,54 @@ final levelProgressProvider = Provider<double>((ref) {
   return AppLevels.getProgress(stats.totalXp);
 });
 
-/// 今日 XP (Stream, 自动刷新)
-final todayXpProvider = StreamProvider<int>((ref) {
-  final db = ref.watch(databaseProvider);
-  return db.xpDao.watchXpToday(DateTime.now());
-});
-
-/// 今日作战数据 (Stream, 自动刷新)
-/// 监听事件表变化, 任一事件变化时重新查询全部统计
+/// 今日作战数据 (3 个核心数字: 见人/查询/成交)
+/// 存储在 Settings 表, key = "{metric}_{date}"
 final todayBattleStatsProvider = StreamProvider<BattleStats>((ref) {
   final db = ref.watch(databaseProvider);
-  final now = DateTime.now();
+  final dateKey = _dateKey(DateTime.now());
 
-  // 用 open 事件流作为触发器, 任何事件变化都会触发重新查询
-  return db.eventDao.watchCountEventToday(EventType.open.code, now).asyncMap((_) async {
-    final open = await db.eventDao.countEventToday(EventType.open.code, now);
-    final conversation = await db.eventDao.countEventToday(EventType.conversation.code, now);
-    final query = await db.eventDao.countEventToday(EventType.query.code, now);
-    final followUp = await db.eventDao.countEventToday(EventType.followUp.code, now);
-    final won = await db.eventDao.countEventToday(EventType.won.code, now);
-    final xp = await db.xpDao.getXpToday(now);
-
+  return db.settingDao.watchAll().map((settings) {
     return BattleStats(
-      open: open,
-      conversation: conversation,
-      query: query,
-      followUp: followUp,
-      won: won,
-      xp: xp,
+      peopleSeen: int.tryParse(settings['people_seen_$dateKey'] ?? '') ?? 0,
+      queries: int.tryParse(settings['queries_$dateKey'] ?? '') ?? 0,
+      deals: int.tryParse(settings['deals_$dateKey'] ?? '') ?? 0,
     );
   });
 });
 
+/// 累计统计数据
+final totalStatsProvider = FutureProvider<TotalStats>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final settings = await db.settingDao.getAll();
+  return TotalStats(
+    totalMeet: int.tryParse(settings['total_meets'] ?? '') ?? 0,
+    totalQuery: int.tryParse(settings['total_queries'] ?? '') ?? 0,
+    totalDeal: int.tryParse(settings['total_deals'] ?? '') ?? 0,
+  );
+});
+
+/// V1.0 作战数据 - 只有三个核心数字
 class BattleStats {
-  final int open;
-  final int conversation;
-  final int query;
-  final int followUp;
-  final int won;
-  final int xp;
+  final int peopleSeen;
+  final int queries;
+  final int deals;
 
   const BattleStats({
-    this.open = 0,
-    this.conversation = 0,
-    this.query = 0,
-    this.followUp = 0,
-    this.won = 0,
-    this.xp = 0,
+    this.peopleSeen = 0,
+    this.queries = 0,
+    this.deals = 0,
+  });
+}
+
+/// 累计统计
+class TotalStats {
+  final int totalMeet;
+  final int totalQuery;
+  final int totalDeal;
+
+  const TotalStats({
+    this.totalMeet = 0,
+    this.totalQuery = 0,
+    this.totalDeal = 0,
   });
 }
