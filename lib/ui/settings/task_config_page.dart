@@ -399,10 +399,14 @@ class _MetricConfigCard extends StatelessWidget {
                         : () => onTargetChanged!(target > 1 ? target - 1 : 1),
                     icon: const Icon(Icons.remove_circle_outline),
                     color: color,
+                    iconSize: 20,
+                    constraints: const BoxConstraints(
+                        minWidth: 36, minHeight: 36),
+                    padding: EdgeInsets.zero,
                   ),
                   // 数字
                   Container(
-                    width: 60,
+                    width: 56,
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     decoration: BoxDecoration(
                       border: Border.all(color: color.withValues(alpha: 0.3)),
@@ -424,6 +428,10 @@ class _MetricConfigCard extends StatelessWidget {
                         : () => onTargetChanged!(target + 1),
                     icon: const Icon(Icons.add_circle_outline),
                     color: color,
+                    iconSize: 20,
+                    constraints: const BoxConstraints(
+                        minWidth: 36, minHeight: 36),
+                    padding: EdgeInsets.zero,
                   ),
                   const SizedBox(width: 8),
                   Text(
