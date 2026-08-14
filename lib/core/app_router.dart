@@ -11,6 +11,7 @@ import '../ui/data/analytics_page.dart';
 import '../ui/achievements/xp_level_page.dart';
 import '../ui/achievements/achievement_page.dart';
 import '../ui/settings/settings_page.dart';
+import '../ui/settings/task_config_page.dart';
 import '../ui/dev/log_viewer_page.dart';
 import '../models/enums.dart';
 
@@ -92,6 +93,10 @@ class AppRouter {
         GoRoute(
           path: '/settings',
           builder: (context, state) => const SettingsPage(),
+        ),
+        GoRoute(
+          path: '/settings/task-config',
+          builder: (context, state) => const TaskConfigPage(),
         ),
         GoRoute(
           path: '/dev/logs',

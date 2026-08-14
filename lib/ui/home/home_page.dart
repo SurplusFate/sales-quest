@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/database/app_database.dart';
 import '../../providers/stats_providers.dart';
 import '../../providers/task_providers.dart';
+import '../../services/daily_task_service.dart';
 
 /// 作战首页 - V1.0 核心 Dashboard
 ///
 /// 作为 ShellRoute 的 child, 不嵌套 Scaffold。
-/// 顶部等级卡片 + 今日作战 3 数字 + 今日任务 3 行, 紧凑布局。
+/// 顶部等级卡片 + 今日作战 3 数字 + 今日任务行, 紧凑布局。
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -19,23 +21,11 @@ class HomePage extends ConsumerWidget {
     final progress = ref.watch(levelProgressProvider);
     final userStats = ref.watch(userStatsProvider).valueOrNull;
     final tasks = ref.watch(todayTasksProvider).valueOrNull ?? [];
+    final configAsync = ref.watch(todayTaskConfigProvider);
+    final config = configAsync.valueOrNull;
 
     final totalXp = userStats?.totalXp ?? 0;
-
-    // 根据 metric code 查找今日任务。
-    // 元素类型由 provider 推断 (DailyTaskEntity), 无需在此导入实体库。
-    ({int progress, int target, bool completed}) lookup(String code) {
-      for (final t in tasks) {
-        if (t.metric == code) {
-          return (progress: t.progress, target: t.target, completed: t.completed);
-        }
-      }
-      return (progress: 0, target: 0, completed: false);
-    }
-
-    final meetTask = lookup('MEET');
-    final queryTask = lookup('QUERY');
-    final dealTask = lookup('DEAL');
+    final streakDays = userStats?.streakDays ?? 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
@@ -50,6 +40,7 @@ class HomePage extends ConsumerWidget {
             currentLevelXp: level.xpRequired,
             nextLevelXp: nextLevel?.xpRequired ?? level.xpRequired,
             progress: progress,
+            streakDays: streakDays,
           ),
           const SizedBox(height: 8),
 
@@ -79,39 +70,62 @@ class HomePage extends ConsumerWidget {
           // === 今日任务 ===
           const _SectionTitle('今日任务'),
           const SizedBox(height: 8),
-          _TaskRow(
-            label: '见人',
-            icon: Icons.groups,
-            color: Colors.blue,
-            progress: meetTask.progress,
-            target: meetTask.target,
-            completed: meetTask.completed,
-          ),
-          const SizedBox(height: 8),
-          _TaskRow(
-            label: '查询',
-            icon: Icons.search,
-            color: Colors.purple,
-            progress: queryTask.progress,
-            target: queryTask.target,
-            completed: queryTask.completed,
-          ),
-          const SizedBox(height: 8),
-          _TaskRow(
-            label: '成交',
-            icon: Icons.celebration,
-            color: Colors.red,
-            progress: dealTask.progress,
-            target: dealTask.target,
-            completed: dealTask.completed,
-          ),
+          if (tasks.isEmpty)
+            _EmptyTaskCard(config: config)
+          else
+            ..._buildTaskRows(tasks, config),
         ],
       ),
     );
   }
+
+  List<Widget> _buildTaskRows(
+      List<DailyTaskEntity> tasks, DailyTaskConfig? config) {
+    final List<Widget> rows = [];
+    for (var i = 0; i < tasks.length; i++) {
+      final t = tasks[i];
+      // 获取指标信息
+      String label;
+      IconData icon;
+      Color color;
+      switch (t.metric) {
+        case 'MEET':
+          label = '见人';
+          icon = Icons.groups;
+          color = Colors.blue;
+          break;
+        case 'QUERY':
+          label = '查询';
+          icon = Icons.search;
+          color = Colors.purple;
+          break;
+        case 'DEAL':
+          label = '成交';
+          icon = Icons.celebration;
+          color = Colors.red;
+          break;
+        default:
+          label = t.metric;
+          icon = Icons.task_alt;
+          color = Colors.grey;
+      }
+      rows.add(_TaskRow(
+        label: label,
+        icon: icon,
+        color: color,
+        progress: t.progress,
+        target: t.target,
+        completed: t.completed,
+      ));
+      if (i < tasks.length - 1) {
+        rows.add(const SizedBox(height: 8));
+      }
+    }
+    return rows;
+  }
 }
 
-/// 等级卡片: 等级徽章 (L1) + 等级名 + XP 进度条 + 当前XP/下一级XP
+/// 等级卡片: 等级徽章 + 等级名 + XP 进度条 + 连续作战天数
 class _LevelCard extends StatelessWidget {
   final int level;
   final String title;
@@ -119,6 +133,7 @@ class _LevelCard extends StatelessWidget {
   final int currentLevelXp;
   final int nextLevelXp;
   final double progress;
+  final int streakDays;
 
   const _LevelCard({
     required this.level,
@@ -127,6 +142,7 @@ class _LevelCard extends StatelessWidget {
     required this.currentLevelXp,
     required this.nextLevelXp,
     required this.progress,
+    required this.streakDays,
   });
 
   @override
@@ -192,6 +208,30 @@ class _LevelCard extends StatelessWidget {
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
+                    if (streakDays > 0) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🔥', style: TextStyle(fontSize: 12)),
+                            const SizedBox(width: 2),
+                            Text(
+                              '$streakDays',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: Colors.orange.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     Text(
                       xpText,
@@ -316,6 +356,44 @@ class _TaskRow extends StatelessWidget {
             completed ? Icons.check : Icons.chevron_right,
             size: 18,
             color: completed ? Colors.green : Colors.grey,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 空任务卡片 (当天未设置任务或未包含任何指标)
+class _EmptyTaskCard extends StatelessWidget {
+  final DailyTaskConfig? config;
+  const _EmptyTaskCard({this.config});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant,
+          width: 1,
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.flag_outlined, size: 32, color: theme.colorScheme.primary),
+          const SizedBox(height: 8),
+          Text(
+            config == null
+                ? '点击设置今日基础任务'
+                : '今日未设置任何基础任务\n请在设置中添加指标',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

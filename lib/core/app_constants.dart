@@ -47,29 +47,66 @@ class AppLevels {
   }
 }
 
-/// 每日任务定义 (V1 只有 3 个核心任务)
+/// 每日任务定义 (用于创建任务行时的元数据)
 class DailyTaskDef {
   final String id;
   final String metricCode; // CoreMetric.code
   final String label;
-  final int target;
   final int xpReward;
 
   const DailyTaskDef({
     required this.id,
     required this.metricCode,
     required this.label,
-    required this.target,
     required this.xpReward,
   });
 }
 
+/// 任务模板: 只有元数据, target 由用户配置决定
 class AppTasks {
   static const List<DailyTaskDef> dailyTaskTemplates = [
-    DailyTaskDef(id: 'task_meet', metricCode: 'MEET', label: '见人', target: 150, xpReward: 100),
-    DailyTaskDef(id: 'task_query', metricCode: 'QUERY', label: '查询', target: 10, xpReward: 80),
-    DailyTaskDef(id: 'task_deal', metricCode: 'DEAL', label: '成交', target: 3, xpReward: 200),
+    DailyTaskDef(id: 'task_meet', metricCode: 'MEET', label: '见人', xpReward: 100),
+    DailyTaskDef(id: 'task_query', metricCode: 'QUERY', label: '查询', xpReward: 80),
+    DailyTaskDef(id: 'task_deal', metricCode: 'DEAL', label: '成交', xpReward: 200),
   ];
+
+  /// 根据 metricCode 查找模板
+  static DailyTaskDef? findByMetric(String metricCode) {
+    for (final def in dailyTaskTemplates) {
+      if (def.metricCode == metricCode) return def;
+    }
+    return null;
+  }
+}
+
+/// 推荐默认任务配置
+class DefaultTaskConfig {
+  /// 推荐见人目标
+  static const int recommendedMeetTarget = 100;
+
+  /// 推荐查询目标
+  static const int recommendedQueryTarget = 5;
+
+  /// 推荐成交目标 (默认不参与, 但保留推荐值)
+  static const int recommendedDealTarget = 1;
+
+  /// 推荐是否包含见人
+  static const bool recommendedIncludeMeet = true;
+
+  /// 推荐是否包含查询
+  static const bool recommendedIncludeQuery = true;
+
+  /// 推荐是否包含成交 (默认不参与)
+  static const bool recommendedIncludeDeal = false;
+}
+
+/// XP 奖励常量
+class XpRewards {
+  /// 完成今日全部基础任务的额外奖励
+  static const int dailyCompletionBonus = 50;
+
+  /// 成交额外 XP (当成交不参与基础任务时, 每次成交的额外奖励)
+  static const int dealExtraXp = 50;
 }
 
 /// 成就定义

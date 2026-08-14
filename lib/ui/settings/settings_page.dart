@@ -33,6 +33,20 @@ class SettingsPage extends ConsumerWidget {
         ),
         body: ListView(
         children: [
+          // === 基础任务 ===
+          _SettingsGroup(
+            title: '基础任务',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: const Text('基础任务设置'),
+                subtitle: const Text('自定义每日见人 / 查询 / 成交目标'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/settings/task-config'),
+              ),
+            ],
+          ),
+
           // === 数据管理 ===
           _SettingsGroup(
             title: '数据管理',
@@ -134,6 +148,12 @@ class SettingsPage extends ConsumerWidget {
         }
       }
 
+      // 清除今日任务配置和锁定状态 (允许重新设置)
+      await db.settingDao.remove('task_config_${dateKey}_locked');
+      await db.settingDao.remove('task_config_${dateKey}_all_completed');
+      await db.settingDao.remove('daily_completion_$dateKey');
+      await db.settingDao.remove('deal_extra_xp_awarded_$dateKey');
+
       // 删除今日任务行 (执行度归零, 下次记录时自动重建)
       await (db.delete(db.dailyTasks)..where((t) => t.date.equals(dateKey)))
           .go();
@@ -141,6 +161,9 @@ class SettingsPage extends ConsumerWidget {
       // 刷新相关 providers
       ref.invalidate(todayExecutionRateProvider);
       ref.invalidate(totalStatsProvider);
+      ref.invalidate(todayTaskConfigProvider);
+      ref.invalidate(isTodayLockedProvider);
+      ref.invalidate(todayAllCompletedProvider);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -206,6 +229,9 @@ class SettingsPage extends ConsumerWidget {
       // 刷新所有相关 providers (stream providers 会自动更新)
       ref.invalidate(todayExecutionRateProvider);
       ref.invalidate(totalStatsProvider);
+      ref.invalidate(todayTaskConfigProvider);
+      ref.invalidate(isTodayLockedProvider);
+      ref.invalidate(todayAllCompletedProvider);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
