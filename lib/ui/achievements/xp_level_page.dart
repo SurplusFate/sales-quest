@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/app_constants.dart';
 import '../../providers/stats_providers.dart';
 
@@ -20,9 +21,20 @@ class XpLevelPage extends ConsumerWidget {
 
     final totalXp = stats?.totalXp ?? 0;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('等级')),
-      body: ListView(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/achievements');
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('等级'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/achievements'),
+          ),
+        ),
+        body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // === 当前等级大圆 ===
@@ -170,6 +182,7 @@ class XpLevelPage extends ConsumerWidget {
             );
           }),
         ],
+      ),
       ),
     );
   }

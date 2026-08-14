@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/app_logger.dart';
 
 /// 日志查看页面
@@ -60,63 +61,73 @@ class _LogViewerPageState extends State<LogViewerPage> {
         final filtered = _filterEntries(AppLogger.instance.entries);
         _scrollToBottom();
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('运行日志'),
-            actions: [
-              IconButton(
-                icon: Icon(_autoScroll ? Icons.vertical_align_bottom : Icons.vertical_align_top),
-                tooltip: _autoScroll ? '自动滚动到底部' : '关闭自动滚动',
-                onPressed: () => setState(() => _autoScroll = !_autoScroll),
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) context.go('/settings');
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('运行日志'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.go('/settings'),
               ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'export':
-                      _exportLogs(context);
-                      break;
-                    case 'copy_all':
-                      Clipboard.setData(ClipboardData(text: AppLogger.instance.exportPlainText()));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('日志已复制到剪贴板')),
-                      );
-                      break;
-                    case 'clear':
-                      _showClearConfirm(context);
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'export', child: Text('导出到文件')),
-                  const PopupMenuItem(value: 'copy_all', child: Text('复制全部')),
-                  const PopupMenuItem(value: 'clear', child: Text('清空日志')),
-                ],
-              ),
-            ],
-          ),
-          body: Column(
-            children: [
-              // === 过滤栏 ===
-              _buildFilterBar(),
+              actions: [
+                IconButton(
+                  icon: Icon(_autoScroll ? Icons.vertical_align_bottom : Icons.vertical_align_top),
+                  tooltip: _autoScroll ? '自动滚动到底部' : '关闭自动滚动',
+                  onPressed: () => setState(() => _autoScroll = !_autoScroll),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'export':
+                        _exportLogs(context);
+                        break;
+                      case 'copy_all':
+                        Clipboard.setData(ClipboardData(text: AppLogger.instance.exportPlainText()));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('日志已复制到剪贴板')),
+                        );
+                        break;
+                      case 'clear':
+                        _showClearConfirm(context);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'export', child: Text('导出到文件')),
+                    const PopupMenuItem(value: 'copy_all', child: Text('复制全部')),
+                    const PopupMenuItem(value: 'clear', child: Text('清空日志')),
+                  ],
+                ),
+              ],
+            ),
+            body: Column(
+              children: [
+                // === 过滤栏 ===
+                _buildFilterBar(),
 
-              // === 统计栏 ===
-              _buildStatsBar(),
+                // === 统计栏 ===
+                _buildStatsBar(),
 
-              // === 日志列表 ===
-              Expanded(
-                child: filtered.isEmpty
-                    ? const Center(child: Text('暂无日志', style: TextStyle(color: Colors.grey)))
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final entry = filtered[index];
-                          return _LogCard(entry: entry);
-                        },
-                      ),
-              ),
-            ],
+                // === 日志列表 ===
+                Expanded(
+                  child: filtered.isEmpty
+                      ? const Center(child: Text('暂无日志', style: TextStyle(color: Colors.grey)))
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final entry = filtered[index];
+                            return _LogCard(entry: entry);
+                          },
+                        ),
+                ),
+              ],
+            ),
           ),
         );
       },

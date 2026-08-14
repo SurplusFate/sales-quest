@@ -18,9 +18,20 @@ class SettingsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
-      body: ListView(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/');
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('设置'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/'),
+          ),
+        ),
+        body: ListView(
         children: [
           // === 数据管理 ===
           _SettingsGroup(
@@ -79,6 +90,7 @@ class SettingsPage extends ConsumerWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

@@ -94,7 +94,12 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('保存成功'), duration: Duration(seconds: 1)),
       );
-      context.pop();
+      // 保存后回到客户详情 (编辑) 或客户列表 (新增)
+      if (_isEdit && widget.customerId != null) {
+        context.go('/customer/${widget.customerId}');
+      } else {
+        context.go('/customers');
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存失败: $e')));
@@ -125,9 +130,30 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       body = _buildForm(context);
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          if (_isEdit && widget.customerId != null) {
+            context.go('/customer/${widget.customerId}');
+          } else {
+            context.go('/customers');
+          }
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(_isEdit ? '编辑客户' : '新增客户'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (_isEdit && widget.customerId != null) {
+              context.go('/customer/${widget.customerId}');
+            } else {
+              context.go('/customers');
+            }
+          },
+        ),
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
@@ -142,6 +168,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         ],
       ),
       body: body,
+      ),
     );
   }
 
