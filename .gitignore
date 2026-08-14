@@ -18,6 +18,9 @@ build/
 # *.g.dart
 # *.freezed.dart
 
+# Flutter Web build output (PWA)
+/app/
+
 # Misc
 .DS_Store
 *.log
