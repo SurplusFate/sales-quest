@@ -6,6 +6,9 @@ import '../../providers/database_provider.dart';
 import '../../providers/stats_providers.dart';
 import '../../providers/task_providers.dart';
 
+/// 当前 APP 版本号
+const String appVersion = 'v0.2.1';
+
 /// 设置页 - V1.0 重构
 ///
 /// 数据管理: 清除今日数据 / 清除所有数据 (带确认对话框)
@@ -68,10 +71,10 @@ class SettingsPage extends ConsumerWidget {
           _SettingsGroup(
             title: '关于',
             children: [
-              const ListTile(
-                leading: Icon(Icons.info_outline),
-                title: Text('版本'),
-                trailing: Text('V1.0'),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('版本'),
+                trailing: const Text(appVersion),
               ),
               ListTile(
                 leading: const Icon(Icons.description_outlined),

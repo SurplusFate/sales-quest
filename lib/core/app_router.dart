@@ -16,7 +16,6 @@ import '../ui/dev/log_viewer_page.dart';
 import '../models/enums.dart';
 
 class AppRouter {
-  static final _shellKey = GlobalKey<NavigatorState>();
   static final _rootKey = GlobalKey<NavigatorState>();
 
   static GoRouter build() {
@@ -45,35 +44,58 @@ class AppRouter {
         ),
       ),
       routes: [
-        ShellRoute(
-          navigatorKey: _shellKey,
-          builder: (context, state, child) => _ScaffoldWithNav(child: child),
-          routes: [
-            GoRoute(
-              path: '/',
-              builder: (context, state) => const HomePage(),
-            ),
-            GoRoute(
-              path: '/customers',
-              builder: (context, state) => const CustomerListPage(),
-            ),
-            GoRoute(
-              path: '/data',
-              builder: (context, state) => const AnalyticsPage(),
-            ),
-            GoRoute(
-              path: '/achievements',
-              builder: (context, state) => const AchievementPage(),
+        /// 使用 StatefulShellRoute.indexedStack 实现底部导航
+        /// 每个 tab 拥有独立的导航栈，切换 tab 不会产生浏览器历史记录
+        /// 彻底解决返回键需要多次点击的问题
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) =>
+              _ScaffoldWithNav(navigationShell: navigationShell),
+          branches: [
+            // Tab 0: 首页
+            StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: 'xp',
-                  builder: (context, state) => const XpLevelPage(),
+                  path: '/',
+                  builder: (context, state) => const HomePage(),
+                ),
+              ],
+            ),
+            // Tab 1: 客户
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/customers',
+                  builder: (context, state) => const CustomerListPage(),
+                ),
+              ],
+            ),
+            // Tab 2: 数据
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/data',
+                  builder: (context, state) => const AnalyticsPage(),
+                ),
+              ],
+            ),
+            // Tab 3: 成就
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/achievements',
+                  builder: (context, state) => const AchievementPage(),
+                  routes: [
+                    GoRoute(
+                      path: 'xp',
+                      builder: (context, state) => const XpLevelPage(),
+                    ),
+                  ],
                 ),
               ],
             ),
           ],
         ),
-        // 非 shell 路由 (全屏页面)
+        // 非 shell 路由 (全屏页面，使用 context.push 进入)
         GoRoute(
           path: '/customer/new',
           builder: (context, state) => const CustomerFormPage(customerId: null),
@@ -143,61 +165,43 @@ class _RouteLogger extends NavigatorObserver {
   }
 }
 
-/// 带底部导航的 Scaffold (ConsumerWidget 以使用 ref)
+/// 带底部导航的 Scaffold
+///
+/// 使用 StatefulNavigationShell 管理多个 tab 的独立导航栈。
+/// goBranch() 切换 tab 时不产生浏览器历史记录，
+/// 从根本上解决返回键累积问题。
 class _ScaffoldWithNav extends ConsumerWidget {
-  final Widget child;
-  const _ScaffoldWithNav({required this.child});
-
-  int _currentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/customers')) return 1;
-    if (location.startsWith('/data')) return 2;
-    if (location.startsWith('/achievements')) return 3;
-    return 0;
-  }
+  final StatefulNavigationShell navigationShell;
+  const _ScaffoldWithNav({required this.navigationShell});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final idx = _currentIndex(context);
-    return PopScope(
-      // 首页 tab 允许系统返回 (退出 APP), 其他 tab 拦截返回键
-      canPop: idx == 0,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) {
-          // 非首页 tab 按返回键 → 回到首页 tab
-          context.go('/');
-        }
-      },
-      child: Scaffold(
-        body: child,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _showQuickAction(context, ref),
-          tooltip: '快速记录',
-          child: const Icon(Icons.edit_note),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: idx,
-          onDestinationSelected: (i) {
-            switch (AppTab.values[i]) {
-              case AppTab.home:
-                context.go('/');
-              case AppTab.customers:
-                context.go('/customers');
-              case AppTab.data:
-                context.go('/data');
-              case AppTab.achievements:
-                context.go('/achievements');
-            }
-          },
-          destinations: AppTab.values
-              .map((tab) => NavigationDestination(
-                    icon: Icon(tab.icon),
-                    selectedIcon: Icon(tab.activeIcon),
-                    label: tab.label,
-                  ))
-              .toList(),
-        ),
+    return Scaffold(
+      body: navigationShell,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showQuickAction(context, ref),
+        tooltip: '快速记录',
+        child: const Icon(Icons.edit_note),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: navigationShell.currentIndex,
+        onDestinationSelected: (i) {
+          // goBranch 切换 tab:
+          // - 不产生浏览器历史记录 (使用 IndexedStack 内部切换)
+          // - initialLocation: 点击当前 tab 时重置到该 tab 首页
+          navigationShell.goBranch(
+            i,
+            initialLocation: i == navigationShell.currentIndex,
+          );
+        },
+        destinations: AppTab.values
+            .map((tab) => NavigationDestination(
+                  icon: Icon(tab.icon),
+                  selectedIcon: Icon(tab.activeIcon),
+                  label: tab.label,
+                ))
+            .toList(),
       ),
     );
   }
