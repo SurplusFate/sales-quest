@@ -26,11 +26,22 @@ class HomePage extends ConsumerWidget {
     final totalXp = userStats?.totalXp ?? 0;
     final streakDays = userStats?.streakDays ?? 0;
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-        children: [
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Sales Quest'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: '设置',
+            onPressed: () => context.push('/settings'),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
+          children: [
           _LevelCard(
             level: level.level,
             title: level.title,
@@ -136,7 +147,8 @@ class HomePage extends ConsumerWidget {
             _EmptyTaskCard(config: config)
           else
             ..._buildTaskRows(tasks),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -7,7 +7,7 @@ import '../../providers/stats_providers.dart';
 import '../../providers/task_providers.dart';
 
 /// 当前 APP 版本号
-const String appVersion = 'v0.2.1';
+const String appVersion = 'v0.2.2';
 
 /// 设置页 - V1.0 重构
 ///
