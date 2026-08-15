@@ -1,0 +1,12 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/foundation.dart",
+    "package:flutter/material.dart",
+    "package:flutter_riverpod/flutter_riverpod.dart",
+    "package:sales_quest/core/app_logger.dart",
+    "package:sales_quest/core/app_theme.dart",
+    "package:sales_quest/core/app_router.dart",
+    "package:sales_quest/providers/service_providers.dart"
+  ]
+}

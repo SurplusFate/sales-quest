@@ -1,0 +1,10 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:flutter_riverpod/flutter_riverpod.dart",
+    "package:go_router/go_router.dart",
+    "package:sales_quest/core/app_constants.dart",
+    "package:sales_quest/providers/stats_providers.dart"
+  ]
+}

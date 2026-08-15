@@ -1,0 +1,15 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:flutter_test/flutter_test.dart",
+    "package:flutter_riverpod/flutter_riverpod.dart",
+    "package:drift/native.dart",
+    "package:go_router/go_router.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/providers/database_provider.dart",
+    "package:sales_quest/ui/home/home_page.dart",
+    "package:sales_quest/ui/home/quick_action_sheet.dart",
+    "package:sales_quest/ui/settings/task_config_page.dart"
+  ]
+}

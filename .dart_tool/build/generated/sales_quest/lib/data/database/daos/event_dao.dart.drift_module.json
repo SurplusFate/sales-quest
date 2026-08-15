@@ -1,0 +1,52 @@
+{
+  "elements": {
+    "EventDao": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/daos/event_dao.dart",
+        "name": "EventDao"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/daos/event_dao.dart",
+        "offset": 165,
+        "name": "EventDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "customer_events"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "customer_events"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "EventDao",
+            "import_uri": "package:sales_quest/data/database/daos/event_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:sales_quest/data/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/data/database/tables.dart"
+  ]
+}

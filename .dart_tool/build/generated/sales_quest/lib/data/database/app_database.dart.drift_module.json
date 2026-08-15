@@ -1,0 +1,137 @@
+{
+  "elements": {
+    "AppDatabase": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/app_database.dart",
+        "name": "AppDatabase"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/app_database.dart",
+        "offset": 782,
+        "name": "AppDatabase"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "customers"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "customer_events"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "xp_records"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "follow_ups"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "daily_tasks"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "user_stats"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "achievements"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "settings"
+        }
+      ],
+      "type": "database",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "customers"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "customer_events"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "xp_records"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "follow_ups"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "daily_tasks"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "user_stats"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "achievements"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "settings"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "schema_version": 1,
+      "daos": [
+        {
+          "library_uri": "package:sales_quest/data/database/daos/customer_dao.dart",
+          "name": "CustomerDao"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/daos/event_dao.dart",
+          "name": "EventDao"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/daos/xp_dao.dart",
+          "name": "XpDao"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/daos/follow_up_dao.dart",
+          "name": "FollowUpDao"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/daos/task_dao.dart",
+          "name": "TaskDao"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/daos/stats_dao.dart",
+          "name": "StatsDao"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/daos/achievement_dao.dart",
+          "name": "AchievementDao"
+        },
+        {
+          "library_uri": "package:sales_quest/data/database/daos/setting_dao.dart",
+          "name": "SettingDao"
+        }
+      ],
+      "has_constructor_arg": false
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/core/app_logger.dart",
+    "package:sales_quest/data/database/database_connection_native.dart",
+    "package:sales_quest/data/database/tables.dart",
+    "package:sales_quest/data/database/daos/customer_dao.dart",
+    "package:sales_quest/data/database/daos/event_dao.dart",
+    "package:sales_quest/data/database/daos/xp_dao.dart",
+    "package:sales_quest/data/database/daos/follow_up_dao.dart",
+    "package:sales_quest/data/database/daos/task_dao.dart",
+    "package:sales_quest/data/database/daos/stats_dao.dart",
+    "package:sales_quest/data/database/daos/achievement_dao.dart",
+    "package:sales_quest/data/database/daos/setting_dao.dart"
+  ]
+}

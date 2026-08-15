@@ -1,0 +1,52 @@
+{
+  "elements": {
+    "SettingDao": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/daos/setting_dao.dart",
+        "name": "SettingDao"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/daos/setting_dao.dart",
+        "offset": 161,
+        "name": "SettingDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "settings"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "settings"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "SettingDao",
+            "import_uri": "package:sales_quest/data/database/daos/setting_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:sales_quest/data/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/data/database/tables.dart"
+  ]
+}

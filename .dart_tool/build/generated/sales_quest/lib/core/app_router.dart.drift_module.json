@@ -1,0 +1,21 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:flutter_riverpod/flutter_riverpod.dart",
+    "package:go_router/go_router.dart",
+    "package:sales_quest/core/app_logger.dart",
+    "package:sales_quest/ui/home/home_page.dart",
+    "package:sales_quest/ui/home/quick_action_sheet.dart",
+    "package:sales_quest/ui/customers/customer_list_page.dart",
+    "package:sales_quest/ui/customers/customer_detail_page.dart",
+    "package:sales_quest/ui/customers/customer_form_page.dart",
+    "package:sales_quest/ui/data/analytics_page.dart",
+    "package:sales_quest/ui/achievements/xp_level_page.dart",
+    "package:sales_quest/ui/achievements/achievement_page.dart",
+    "package:sales_quest/ui/settings/settings_page.dart",
+    "package:sales_quest/ui/settings/task_config_page.dart",
+    "package:sales_quest/ui/dev/log_viewer_page.dart",
+    "package:sales_quest/models/enums.dart"
+  ]
+}

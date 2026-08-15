@@ -1,0 +1,7 @@
+{
+  "elements": {},
+  "imports": [
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/core/app_constants.dart"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_riverpod/flutter_riverpod.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/services/daily_task_service.dart",
+    "package:sales_quest/providers/database_provider.dart",
+    "package:sales_quest/providers/service_providers.dart"
+  ]
+}

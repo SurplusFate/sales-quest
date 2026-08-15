@@ -1,0 +1,11 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:flutter_riverpod/flutter_riverpod.dart",
+    "package:go_router/go_router.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/models/enums.dart",
+    "package:sales_quest/providers/customer_providers.dart"
+  ]
+}

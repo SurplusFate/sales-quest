@@ -1,0 +1,11 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:drift/native.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/services/daily_task_service.dart",
+    "package:sales_quest/services/xp_service.dart",
+    "package:sales_quest/core/app_constants.dart"
+  ]
+}

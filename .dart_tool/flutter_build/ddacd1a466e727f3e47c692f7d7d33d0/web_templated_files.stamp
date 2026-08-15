@@ -1,0 +1,1 @@
+{"inputs":["/workspace/sales_quest/web/*/index.html","/workspace/sales_quest/web/flutter_bootstrap.js","/tmp/flutter/bin/cache/engine.stamp"],"outputs":["/workspace/sales_quest/build/web/*/index.html","/workspace/sales_quest/build/web/flutter_bootstrap.js"],"buildKey":"[{\"compileTarget\":\"dart2js\",\"renderer\":\"canvaskit\",\"mainJsPath\":\"main.dart.js\"},{}]"}

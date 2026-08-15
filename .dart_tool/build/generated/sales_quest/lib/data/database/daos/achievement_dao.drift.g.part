@@ -1,0 +1,12 @@
+// ignore_for_file: type=lint
+mixin _$AchievementDaoMixin on DatabaseAccessor<AppDatabase> {
+  $AchievementsTable get achievements => attachedDatabase.achievements;
+  AchievementDaoManager get managers => AchievementDaoManager(this);
+}
+
+class AchievementDaoManager {
+  final _$AchievementDaoMixin _db;
+  AchievementDaoManager(this._db);
+  $$AchievementsTableTableManager get achievements =>
+      $$AchievementsTableTableManager(_db.attachedDatabase, _db.achievements);
+}

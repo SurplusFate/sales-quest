@@ -1,0 +1,52 @@
+{
+  "elements": {
+    "FollowUpDao": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/daos/follow_up_dao.dart",
+        "name": "FollowUpDao"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/daos/follow_up_dao.dart",
+        "offset": 164,
+        "name": "FollowUpDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "follow_ups"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "follow_ups"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "FollowUpDao",
+            "import_uri": "package:sales_quest/data/database/daos/follow_up_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:sales_quest/data/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/data/database/tables.dart"
+  ]
+}

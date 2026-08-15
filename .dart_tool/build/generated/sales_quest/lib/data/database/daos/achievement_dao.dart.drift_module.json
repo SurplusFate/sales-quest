@@ -1,0 +1,52 @@
+{
+  "elements": {
+    "AchievementDao": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/daos/achievement_dao.dart",
+        "name": "AchievementDao"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/daos/achievement_dao.dart",
+        "offset": 169,
+        "name": "AchievementDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "achievements"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "achievements"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "AchievementDao",
+            "import_uri": "package:sales_quest/data/database/daos/achievement_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:sales_quest/data/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/data/database/tables.dart"
+  ]
+}

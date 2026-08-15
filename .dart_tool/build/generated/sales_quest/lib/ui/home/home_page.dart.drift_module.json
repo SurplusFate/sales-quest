@@ -1,0 +1,13 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:flutter_riverpod/flutter_riverpod.dart",
+    "package:go_router/go_router.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/providers/stats_providers.dart",
+    "package:sales_quest/providers/action_providers.dart",
+    "package:sales_quest/providers/task_providers.dart",
+    "package:sales_quest/services/daily_task_service.dart"
+  ]
+}

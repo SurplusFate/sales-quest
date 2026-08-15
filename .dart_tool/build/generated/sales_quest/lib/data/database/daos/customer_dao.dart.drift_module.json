@@ -1,0 +1,52 @@
+{
+  "elements": {
+    "CustomerDao": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/daos/customer_dao.dart",
+        "name": "CustomerDao"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/daos/customer_dao.dart",
+        "offset": 163,
+        "name": "CustomerDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "customers"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "customers"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "CustomerDao",
+            "import_uri": "package:sales_quest/data/database/daos/customer_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:sales_quest/data/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/data/database/tables.dart"
+  ]
+}

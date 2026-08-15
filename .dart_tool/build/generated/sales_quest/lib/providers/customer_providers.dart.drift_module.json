@@ -1,0 +1,10 @@
+{
+  "elements": {},
+  "imports": [
+    "package:drift/drift.dart",
+    "package:flutter_riverpod/flutter_riverpod.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/models/enums.dart",
+    "package:sales_quest/providers/database_provider.dart"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "elements": {
+    "TaskDao": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/daos/task_dao.dart",
+        "name": "TaskDao"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/daos/task_dao.dart",
+        "offset": 160,
+        "name": "TaskDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "daily_tasks"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "daily_tasks"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "TaskDao",
+            "import_uri": "package:sales_quest/data/database/daos/task_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:sales_quest/data/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/data/database/tables.dart"
+  ]
+}

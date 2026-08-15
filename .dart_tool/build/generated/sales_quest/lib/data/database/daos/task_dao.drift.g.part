@@ -1,0 +1,12 @@
+// ignore_for_file: type=lint
+mixin _$TaskDaoMixin on DatabaseAccessor<AppDatabase> {
+  $DailyTasksTable get dailyTasks => attachedDatabase.dailyTasks;
+  TaskDaoManager get managers => TaskDaoManager(this);
+}
+
+class TaskDaoManager {
+  final _$TaskDaoMixin _db;
+  TaskDaoManager(this._db);
+  $$DailyTasksTableTableManager get dailyTasks =>
+      $$DailyTasksTableTableManager(_db.attachedDatabase, _db.dailyTasks);
+}

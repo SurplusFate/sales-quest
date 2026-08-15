@@ -1,0 +1,9 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:flutter/services.dart",
+    "package:go_router/go_router.dart",
+    "package:sales_quest/core/app_logger.dart"
+  ]
+}

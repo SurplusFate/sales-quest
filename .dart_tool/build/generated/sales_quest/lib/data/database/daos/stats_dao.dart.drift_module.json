@@ -1,0 +1,52 @@
+{
+  "elements": {
+    "StatsDao": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/daos/stats_dao.dart",
+        "name": "StatsDao"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/daos/stats_dao.dart",
+        "offset": 160,
+        "name": "StatsDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "user_stats"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "user_stats"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "StatsDao",
+            "import_uri": "package:sales_quest/data/database/daos/stats_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:sales_quest/data/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/data/database/tables.dart"
+  ]
+}

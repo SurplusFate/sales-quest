@@ -1,0 +1,1 @@
+{"valid_import":true,"imports":[{"uri":"package:flutter_riverpod/flutter_riverpod.dart","transitive":false},{"uri":"package:sales_quest/core/app_constants.dart","transitive":false},{"uri":"package:sales_quest/data/database/app_database.dart","transitive":false},{"uri":"package:sales_quest/providers/database_provider.dart","transitive":false}],"elements":[]}

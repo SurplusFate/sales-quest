@@ -1,0 +1,52 @@
+{
+  "elements": {
+    "XpDao": {
+      "id": {
+        "library_uri": "package:sales_quest/data/database/daos/xp_dao.dart",
+        "name": "XpDao"
+      },
+      "declaration": {
+        "source_uri": "package:sales_quest/data/database/daos/xp_dao.dart",
+        "offset": 157,
+        "name": "XpDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "xp_records"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:sales_quest/data/database/tables.dart",
+          "name": "xp_records"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "XpDao",
+            "import_uri": "package:sales_quest/data/database/daos/xp_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:sales_quest/data/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:sales_quest/data/database/app_database.dart",
+    "package:sales_quest/data/database/tables.dart"
+  ]
+}
