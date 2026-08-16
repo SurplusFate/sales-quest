@@ -21,3 +21,6 @@ build/
 # Misc
 .DS_Store
 *.log
+
+# Legacy web build output
+legacy/app/

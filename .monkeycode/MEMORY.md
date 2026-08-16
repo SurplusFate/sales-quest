@@ -49,3 +49,12 @@ Entries discovered by the Agent during task execution should follow this format:
   - Flutter Web 应用的 canvas 位于 `flt-glass-pane` 元素的 shadowRoot 中，`document.querySelector('canvas')` 无法找到，需穿透 shadow DOM。
   - headless Chromium（无 GPU）下无法验证 canvas 像素渲染，属环境限制（空项目同样现象），不表示应用有问题。
   - 网页加载后 canvaskit 会动态创建 3 次 canvas 并获取 webgl2 上下文，这是正常初始化流程。
+
+[Project Knowledge Summary]
+- Date: 2026-08-16
+- Context: Discovered by Agent while performing Flutter → Android 原生重构
+- Category: Environment Configuration
+- Instructions:
+  - Android 构建环境: JDK 17 (/usr/lib/jvm/java-17-openjdk-amd64), Android SDK (/opt/android-sdk, platforms;android-35 + build-tools;35.0.0), Gradle 8.9 (/opt/gradle/gradle-8.9, 需 export PATH=/opt/gradle/gradle-8.9/bin:$PATH)。
+  - 需 export ANDROID_HOME=/opt/android-sdk, JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64。
+  - 旧 Flutter 源码已归档到 legacy/ 目录 (lib/test/web/android/pubspec 等)，重构参考逻辑读取 legacy/。
