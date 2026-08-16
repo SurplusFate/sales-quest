@@ -24,3 +24,11 @@ build/
 
 # Legacy web build output
 legacy/app/
+
+# Android
+.gradle/
+local.properties
+*.apk
+*.aab
+*.keystore
+!debug.keystore

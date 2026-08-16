@@ -166,11 +166,11 @@ fun HomePage(
                 EmptyTaskCard(config = state.config)
             } else {
                 state.tasks.forEachIndexed { index, task ->
-                    val meta = taskMeta(task.metric)
+                    val (label, icon, color) = taskMeta(task.metric)
                     TaskRow(
-                        label = meta.label,
-                        icon = meta.icon,
-                        color = meta.color,
+                        label = label,
+                        icon = icon,
+                        color = color,
                         progress = task.progress,
                         target = task.target,
                         completed = task.completed

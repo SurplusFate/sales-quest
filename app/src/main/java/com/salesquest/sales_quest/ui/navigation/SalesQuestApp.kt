@@ -97,23 +97,56 @@ fun SalesQuestApp() {
             modifier = UiModifier.padding(innerPadding)
         ) {
             // 底部 4 tab
-            composable("home") { HomePage() }
-            composable("customers") { CustomerListPage() }
+            composable("home") {
+                HomePage(onNavigateToTaskConfig = { navController.navigate("settings/task-config") })
+            }
+            composable("customers") {
+                CustomerListPage(
+                    onAddCustomer = { navController.navigate("customer/new") },
+                    onOpenCustomer = { id -> navController.navigate("customer/$id") }
+                )
+            }
             composable("data") { AnalyticsPage() }
-            composable("achievements") { AchievementPage() }
+            composable("achievements") {
+                AchievementPage(onOpenXpLevel = { navController.navigate("xp") })
+            }
 
             // 全屏路由
-            composable("customer/new") { CustomerFormPage(customerId = null) }
+            composable("customer/new") {
+                CustomerFormPage(
+                    customerId = null,
+                    onBack = { navController.popBackStack() }
+                )
+            }
             composable("customer/{id}") { entry ->
-                CustomerDetailPage(customerId = entry.arguments?.getString("id") ?: "")
+                CustomerDetailPage(
+                    customerId = entry.arguments?.getString("id") ?: "",
+                    onBack = { navController.popBackStack() },
+                    onEdit = { id -> navController.navigate("customer/$id/edit") }
+                )
             }
             composable("customer/{id}/edit") { entry ->
-                CustomerFormPage(customerId = entry.arguments?.getString("id"))
+                CustomerFormPage(
+                    customerId = entry.arguments?.getString("id"),
+                    onBack = { navController.popBackStack() }
+                )
             }
-            composable("xp") { XpLevelPage() }
-            composable("settings") { SettingsPage() }
-            composable("settings/task-config") { TaskConfigPage() }
-            composable("dev/logs") { LogViewerPage() }
+            composable("xp") {
+                XpLevelPage(onBack = { navController.popBackStack() })
+            }
+            composable("settings") {
+                SettingsPage(
+                    onBack = { navController.popBackStack() },
+                    onOpenTaskConfig = { navController.navigate("settings/task-config") },
+                    onOpenLogs = { navController.navigate("dev/logs") }
+                )
+            }
+            composable("settings/task-config") {
+                TaskConfigPage(onBack = { navController.popBackStack() })
+            }
+            composable("dev/logs") {
+                LogViewerPage(onBack = { navController.popBackStack() })
+            }
         }
     }
 

@@ -2,7 +2,9 @@ package com.salesquest.sales_quest.core
 
 import android.content.Context
 import com.salesquest.sales_quest.data.AppDatabase
+import com.salesquest.sales_quest.data.CustomerStage
 import com.salesquest.sales_quest.data.IdGenerator
+import com.salesquest.sales_quest.data.Operator
 import com.salesquest.sales_quest.data.entity.CustomerEntity
 import com.salesquest.sales_quest.services.AchievementService
 import com.salesquest.sales_quest.services.DailyTaskService
@@ -41,6 +43,16 @@ object AppContainer {
         quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService)
         isInitialized = true
         AppLogger.info("AppContainer", "服务初始化完成")
+    }
+
+    /** 测试专用: 注入内存数据库后重建服务 (跳过 isInitialized 保护) */
+    fun initForTest(testDb: AppDatabase) {
+        db = testDb
+        xpService = XpService(db)
+        dailyTaskService = DailyTaskService(db)
+        achievementService = AchievementService(db)
+        quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService)
+        isInitialized = true
     }
 
     // ==================== 客户相关 ====================

@@ -148,7 +148,7 @@ fun CustomerTile(customer: CustomerEntity, onClick: () -> Unit) {
                     Tag(label = stage.label, color = stageColor(stage))
                     if (cost != null) {
                         Spacer(Modifier.width(6.dp))
-                        Tag(label = "$cost元", color = theme.primary)
+                        Tag(label = "${cost}元", color = theme.primary)
                     }
                 }
             }

@@ -2,6 +2,7 @@ package com.salesquest.sales_quest.ui.customers
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -243,7 +244,7 @@ fun FollowUpTile(followUp: com.salesquest.sales_quest.data.entity.FollowUpEntity
 }
 
 @Composable
-fun InfoCard(title: String, content: @Composable Column.() -> Unit) {
+fun InfoCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -266,7 +267,7 @@ fun InfoRow(label: String, value: String) {
     }
 }
 
-private fun costLabel(cost: Int?): String = if (cost == null) "不清楚" else "$cost元"
+private fun costLabel(cost: Int?): String = if (cost == null) "不清楚" else "${cost}元"
 
 private fun formatTime(ts: Long): String {
     val sdf = SimpleDateFormat("M/d HH:mm", Locale.getDefault())

@@ -1,6 +1,7 @@
 package com.salesquest.sales_quest.ui.customers
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -275,6 +276,7 @@ fun SectionTitle(title: String) {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun <T> ChipGroup(
     label: String,
@@ -299,6 +301,7 @@ fun <T> ChipGroup(
 }
 
 /** 月消费自报 ChoiceChip: 不清楚 / 60+ / 100+ / 150+ / 200+ / 300+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SelfCostChips(
     selected: Int?,
