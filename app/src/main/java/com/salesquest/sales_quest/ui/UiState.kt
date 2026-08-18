@@ -17,6 +17,14 @@ data class TotalStats(
     val totalDeal: Int = 0
 )
 
+/** 本周单日战绩 (折线图数据点) */
+data class WeekDayStats(
+    val dateKey: String = "",
+    val weekday: String = "",
+    val dateLabel: String = "",
+    val stats: BattleStats = BattleStats()
+)
+
 /** 首页组合状态 */
 data class HomeUiState(
     val stats: BattleStats = BattleStats(),
@@ -24,5 +32,6 @@ data class HomeUiState(
     val config: DailyTaskConfig? = null,
     val totalXp: Int = 0,
     val streakDays: Int = 0,
+    val weekStats: List<WeekDayStats> = emptyList(),
     val loading: Boolean = true
 )

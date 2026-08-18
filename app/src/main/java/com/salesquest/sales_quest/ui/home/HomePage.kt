@@ -180,6 +180,11 @@ fun HomePage(
                     }
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+
+            // === 本周战绩 ===
+            WeeklyBattleCard(weekStats = state.weekStats)
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }

@@ -6,6 +6,7 @@ import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.ui.BattleStats
 import com.salesquest.sales_quest.ui.HomeUiState
+import com.salesquest.sales_quest.ui.WeekDayStats
 import com.salesquest.sales_quest.services.DailyTaskConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,6 +32,11 @@ class HomeViewModel : ViewModel() {
         )
     }
 
+    /** 本周战绩 (周一~周六, 与数据分析页共用 settings 数据源) */
+    private val weekStatsFlow = db.settingDao().watchAll().map { settings ->
+        buildWeekStats(settings)
+    }
+
     private val tasksFlow = db.taskDao().watchByDate(todayDateKey)
 
     private val statsFlow = db.statsDao().watchStats()
@@ -47,15 +53,39 @@ class HomeViewModel : ViewModel() {
         battleStatsFlow,
         tasksFlow,
         statsFlow,
-        configFlow
-    ) { stats, tasks, userStats, config ->
+        configFlow,
+        weekStatsFlow
+    ) { stats, tasks, userStats, config, weekStats ->
         HomeUiState(
             stats = stats,
             tasks = tasks,
             config = config,
             totalXp = userStats?.totalXp ?: 0,
             streakDays = userStats?.streakDays ?: 0,
+            weekStats = weekStats,
             loading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
+
+    companion object {
+        /**
+         * 由 settings 列表组装周一至周六的本周战绩
+         * 与 DailyStatsService 共用同一 settings 数据源, 保证两页数据一致
+         */
+        internal fun buildWeekStats(settings: List<com.salesquest.sales_quest.data.entity.SettingEntity>): List<WeekDayStats> {
+            val map = settings.associate { it.key to it.value }
+            return DateUtil.weekDateKeys().map { dateKey ->
+                WeekDayStats(
+                    dateKey = dateKey,
+                    weekday = DateUtil.weekdayName(dateKey),
+                    dateLabel = DateUtil.monthDayLabel(dateKey),
+                    stats = BattleStats(
+                        peopleSeen = map["people_seen_$dateKey"]?.toIntOrNull() ?: 0,
+                        queries = map["queries_$dateKey"]?.toIntOrNull() ?: 0,
+                        deals = map["deals_$dateKey"]?.toIntOrNull() ?: 0
+                    )
+                )
+            }
+        }
+    }
 }

@@ -53,4 +53,48 @@ object DateUtil {
     fun yesterdayStart(time: Long = System.currentTimeMillis()): Long {
         return dayStart(time) - 24L * 60 * 60 * 1000
     }
+
+    /** 本周周一 0 点时间戳 (以周一为一周开始) */
+    fun mondayStart(time: Long = System.currentTimeMillis()): Long {
+        val c = Calendar.getInstance().apply { this.timeInMillis = time }
+        c.set(Calendar.HOUR_OF_DAY, 0)
+        c.set(Calendar.MINUTE, 0)
+        c.set(Calendar.SECOND, 0)
+        c.set(Calendar.MILLISECOND, 0)
+        val offset = (c.get(Calendar.DAY_OF_WEEK) - Calendar.MONDAY + 7) % 7
+        c.add(Calendar.DAY_OF_MONTH, -offset)
+        return c.timeInMillis
+    }
+
+    /** 本周周一至周六的 dateKey 列表 (默认 6 天, 不含周日) */
+    fun weekDateKeys(time: Long = System.currentTimeMillis(), dayCount: Int = 6): List<String> {
+        val monday = mondayStart(time)
+        return (0 until dayCount).map { i ->
+            val c = Calendar.getInstance()
+            c.timeInMillis = monday
+            c.add(Calendar.DAY_OF_MONTH, i)
+            formatDateKey(c)
+        }
+    }
+
+    /** dateKey → 中文星期 (周一/周二/...) */
+    fun weekdayName(dateKey: String): String {
+        val names = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
+        val c = parseDateKey(dateKey)
+        return names[c.get(Calendar.DAY_OF_WEEK) - 1]
+    }
+
+    /** dateKey → "M月d日" 展示 */
+    fun monthDayLabel(dateKey: String): String {
+        val c = parseDateKey(dateKey)
+        return "${c.get(Calendar.MONTH) + 1}月${c.get(Calendar.DAY_OF_MONTH)}日"
+    }
+
+    private fun parseDateKey(dateKey: String): Calendar {
+        val parts = dateKey.split("-").map { it.toInt() }
+        return Calendar.getInstance().apply {
+            clear()
+            set(parts[0], parts[1] - 1, parts[2])
+        }
+    }
 }

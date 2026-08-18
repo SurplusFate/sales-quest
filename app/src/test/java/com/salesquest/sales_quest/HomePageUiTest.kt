@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.room.Room
@@ -55,9 +56,11 @@ class HomePageUiTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("今日作战 (点击数字修改)").assertIsDisplayed()
-        composeRule.onNodeWithText("见人").assertIsDisplayed()
-        composeRule.onNodeWithText("查询").assertIsDisplayed()
-        composeRule.onNodeWithText("成交").assertIsDisplayed()
+        // 见人/查询/成交 同时出现在统计卡片与本周战绩图例, 取首个
+        composeRule.onAllNodesWithText("见人")[0].assertIsDisplayed()
+        composeRule.onAllNodesWithText("查询")[0].assertIsDisplayed()
+        composeRule.onAllNodesWithText("成交")[0].assertIsDisplayed()
+        composeRule.onNodeWithText("本周战绩").performScrollTo().assertIsDisplayed()
     }
 
     @Test
