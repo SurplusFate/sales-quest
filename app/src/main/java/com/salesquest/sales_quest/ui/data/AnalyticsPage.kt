@@ -1,5 +1,6 @@
 package com.salesquest.sales_quest.ui.data
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,21 +18,31 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,20 +52,28 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.salesquest.sales_quest.data.DateUtil
+import kotlinx.coroutines.launch
 
-/** 数据分析页 - V1.0 重构 */
+/** 数据分析页 - 任意历史日期查看/录入/修改 + 累计数据 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsPage(viewModel: AnalyticsViewModel = viewModel()) {
     val today by viewModel.today.collectAsState()
     val total by viewModel.total.collectAsState()
+    val selectedStats by viewModel.selectedStats.collectAsState()
     val executionRate by viewModel.executionRate.collectAsState()
     var tabIndex by remember { mutableStateOf(0) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var editRequest by remember { mutableStateOf<EditMetricRequest?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val selectedDateKey = remember { mutableStateOf(DateUtil.dateKey()) }
 
     val isToday = tabIndex == 0
-    val people = if (isToday) today.peopleSeen else total.totalMeet
-    val queries = if (isToday) today.queries else total.totalQuery
-    val deals = if (isToday) today.deals else total.totalDeal
+    val people = if (isToday) selectedStats.peopleSeen else total.totalMeet
+    val queries = if (isToday) selectedStats.queries else total.totalQuery
+    val deals = if (isToday) selectedStats.deals else total.totalDeal
 
     Scaffold(
         topBar = {
@@ -62,7 +81,8 @@ fun AnalyticsPage(viewModel: AnalyticsViewModel = viewModel()) {
                 title = { Text("数据分析") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -76,12 +96,28 @@ fun AnalyticsPage(viewModel: AnalyticsViewModel = viewModel()) {
 
             if (isToday) {
                 Spacer(Modifier.height(12.dp))
-                ExecutionRateCard(rate = executionRate)
+                // === 日期选择器 ===
+                DateSelector(
+                    dateKey = selectedDateKey.value,
+                    onClick = { showDatePicker = true }
+                )
                 Spacer(Modifier.height(12.dp))
+                if (selectedDateKey.value == DateUtil.dateKey()) {
+                    ExecutionRateCard(rate = executionRate)
+                    Spacer(Modifier.height(12.dp))
+                }
             }
 
-            // === 核心数据卡片 ===
-            CoreStatsRow(people = people, queries = queries, deals = deals)
+            // === 核心数据卡片 (点击数字编辑) ===
+            CoreStatsRow(
+                people = people,
+                queries = queries,
+                deals = deals,
+                editable = isToday,
+                onEditPeople = { editRequest = EditMetricRequest("见人数", people, "人", "MEET", selectedDateKey.value) },
+                onEditQueries = { editRequest = EditMetricRequest("查询数", queries, "次", "QUERY", selectedDateKey.value) },
+                onEditDeals = { editRequest = EditMetricRequest("成交数", deals, "单", "DEAL", selectedDateKey.value) }
+            )
             Spacer(Modifier.height(16.dp))
 
             // === 转化率区域 ===
@@ -100,6 +136,112 @@ fun AnalyticsPage(viewModel: AnalyticsViewModel = viewModel()) {
             }
         }
     }
+
+    // === 日期选择对话框 ===
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = DateUtil.utcMillis(selectedDateKey.value),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val key = DateUtil.dateKeyFromUtc(millis)
+                        selectedDateKey.value = key
+                        viewModel.selectDate(key)
+                    }
+                    showDatePicker = false
+                }) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // === 编辑对话框 ===
+    editRequest?.let { req ->
+        EditMetricDialog(
+            request = req,
+            onDismiss = { editRequest = null },
+            onSave = { v ->
+                scope.launch {
+                    try {
+                        viewModel.editDailyMetric(req.dateKey, req.metricCode, v)
+                        editRequest = null
+                        snackbarHostState.showSnackbar("已保存")
+                    } catch (e: IllegalArgumentException) {
+                        snackbarHostState.showSnackbar(e.message ?: "保存失败")
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("保存失败: ${e.message}")
+                    }
+                }
+            }
+        )
+    }
+}
+
+/** 日期选择入口 */
+@Composable
+fun DateSelector(dateKey: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("日期：", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(dateKey, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(4.dp))
+        Icon(Icons.Filled.ArrowDropDown, contentDescription = "选择日期", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+internal data class EditMetricRequest(
+    val label: String,
+    val currentValue: Int,
+    val suffix: String,
+    val metricCode: String,
+    val dateKey: String
+)
+
+@Composable
+internal fun EditMetricDialog(
+    request: EditMetricRequest,
+    onDismiss: () -> Unit,
+    onSave: (Int) -> Unit
+) {
+    var text by remember { mutableStateOf(request.currentValue.toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("修改 ${request.label}") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text(request.label) },
+                suffix = { Text(request.suffix) },
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val parsed = text.trim().toIntOrNull() ?: -1
+                    if (parsed >= 0) onSave(parsed)
+                }
+            ) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 /** 时间切换条 (V1 仅实现 今日 / 累计) */
@@ -151,21 +293,63 @@ fun ExecutionRateCard(rate: Double) {
 
 /** 核心数据横排 (见人 / 查询 / 成交) */
 @Composable
-fun CoreStatsRow(people: Int, queries: Int, deals: Int) {
+fun CoreStatsRow(
+    people: Int,
+    queries: Int,
+    deals: Int,
+    editable: Boolean = false,
+    onEditPeople: () -> Unit = {},
+    onEditQueries: () -> Unit = {},
+    onEditDeals: () -> Unit = {}
+) {
     Row {
-        StatCell(label = "见人", value = people, color = Color(0xFF2196F3), icon = Icons.Filled.Groups, modifier = Modifier.weight(1f))
+        StatCell(
+            label = "见人",
+            value = people,
+            color = Color(0xFF2196F3),
+            icon = Icons.Filled.Groups,
+            modifier = Modifier.weight(1f),
+            editable = editable,
+            onClick = onEditPeople
+        )
         Spacer(Modifier.width(8.dp))
-        StatCell(label = "查询", value = queries, color = Color(0xFF9C27B0), icon = Icons.Filled.Search, modifier = Modifier.weight(1f))
+        StatCell(
+            label = "查询",
+            value = queries,
+            color = Color(0xFF9C27B0),
+            icon = Icons.Filled.Search,
+            modifier = Modifier.weight(1f),
+            editable = editable,
+            onClick = onEditQueries
+        )
         Spacer(Modifier.width(8.dp))
-        StatCell(label = "成交", value = deals, color = Color(0xFFF44336), icon = Icons.Filled.Celebration, modifier = Modifier.weight(1f))
+        StatCell(
+            label = "成交",
+            value = deals,
+            color = Color(0xFFF44336),
+            icon = Icons.Filled.Celebration,
+            modifier = Modifier.weight(1f),
+            editable = editable,
+            onClick = onEditDeals
+        )
     }
 }
 
 /** 单个核心数字格 */
 @Composable
-fun StatCell(label: String, value: Int, color: Color, icon: ImageVector, modifier: Modifier = Modifier) {
+fun StatCell(
+    label: String,
+    value: Int,
+    color: Color,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    editable: Boolean = false,
+    onClick: () -> Unit = {}
+) {
     Column(
-        modifier = modifier.padding(vertical = 14.dp, horizontal = 8.dp),
+        modifier = modifier
+            .padding(vertical = 14.dp, horizontal = 8.dp)
+            .let { if (editable) it.clickable(onClick = onClick) else it },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))

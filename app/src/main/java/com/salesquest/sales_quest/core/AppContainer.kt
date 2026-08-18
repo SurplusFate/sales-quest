@@ -7,6 +7,7 @@ import com.salesquest.sales_quest.data.IdGenerator
 import com.salesquest.sales_quest.data.Operator
 import com.salesquest.sales_quest.data.entity.CustomerEntity
 import com.salesquest.sales_quest.services.AchievementService
+import com.salesquest.sales_quest.services.DailyStatsService
 import com.salesquest.sales_quest.services.DailyTaskService
 import com.salesquest.sales_quest.services.QuickActionService
 import com.salesquest.sales_quest.services.XpService
@@ -31,6 +32,9 @@ object AppContainer {
     lateinit var quickActionService: QuickActionService
         private set
 
+    lateinit var dailyStatsService: DailyStatsService
+        private set
+
     var isInitialized: Boolean = false
         private set
 
@@ -41,6 +45,7 @@ object AppContainer {
         dailyTaskService = DailyTaskService(db)
         achievementService = AchievementService(db)
         quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService)
+        dailyStatsService = DailyStatsService(db)
         isInitialized = true
         AppLogger.info("AppContainer", "服务初始化完成")
     }
@@ -52,6 +57,7 @@ object AppContainer {
         dailyTaskService = DailyTaskService(db)
         achievementService = AchievementService(db)
         quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService)
+        dailyStatsService = DailyStatsService(db)
         isInitialized = true
     }
 

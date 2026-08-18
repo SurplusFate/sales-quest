@@ -25,59 +25,37 @@ import kotlinx.coroutines.flow.firstOrNull
  */
 class XpService(private val db: AppDatabase) {
 
+    private val dailyStatsService = DailyStatsService(db)
+
     // ==================== 数据操作 (不再更新 streak) ====================
 
-    /** 设置今日见人数 */
+    /** 设置今日见人数 (委托 DailyStatsService 统一累计逻辑) */
     suspend fun setPeopleSeen(count: Int) {
-        val dateKey = DateUtil.dateKey()
-        val previousToday = db.settingDao().getInt(SettingsKeys.peopleSeen(dateKey))
-        db.settingDao().setInt(SettingsKeys.peopleSeen(dateKey), count)
-
-        val currentTotal = db.settingDao().getInt(SettingsKeys.TOTAL_MEETS)
-        val newTotal = currentTotal - previousToday + count
-        db.settingDao().setInt(SettingsKeys.TOTAL_MEETS, if (newTotal < 0) 0 else newTotal)
+        dailyStatsService.updateDailyMetric(DateUtil.dateKey(), "MEET", count)
     }
 
     /** 查询 +1 */
     suspend fun incrementQuery() {
         val dateKey = DateUtil.dateKey()
         val current = db.settingDao().getInt(SettingsKeys.queries(dateKey))
-        db.settingDao().setInt(SettingsKeys.queries(dateKey), current + 1)
-
-        val total = db.settingDao().getInt(SettingsKeys.TOTAL_QUERIES)
-        db.settingDao().setInt(SettingsKeys.TOTAL_QUERIES, total + 1)
+        dailyStatsService.updateDailyMetric(dateKey, "QUERY", current + 1)
     }
 
     /** 设置今日查询数 (直接输入) */
     suspend fun setQuery(count: Int) {
-        val dateKey = DateUtil.dateKey()
-        val previousToday = db.settingDao().getInt(SettingsKeys.queries(dateKey))
-        db.settingDao().setInt(SettingsKeys.queries(dateKey), count)
-
-        val currentTotal = db.settingDao().getInt(SettingsKeys.TOTAL_QUERIES)
-        val newTotal = currentTotal - previousToday + count
-        db.settingDao().setInt(SettingsKeys.TOTAL_QUERIES, if (newTotal < 0) 0 else newTotal)
+        dailyStatsService.updateDailyMetric(DateUtil.dateKey(), "QUERY", count)
     }
 
     /** 成交 +1 */
     suspend fun incrementDeal() {
         val dateKey = DateUtil.dateKey()
         val current = db.settingDao().getInt(SettingsKeys.deals(dateKey))
-        db.settingDao().setInt(SettingsKeys.deals(dateKey), current + 1)
-
-        val total = db.settingDao().getInt(SettingsKeys.TOTAL_DEALS)
-        db.settingDao().setInt(SettingsKeys.TOTAL_DEALS, total + 1)
+        dailyStatsService.updateDailyMetric(dateKey, "DEAL", current + 1)
     }
 
     /** 设置今日成交数 (直接输入) */
     suspend fun setDeal(count: Int) {
-        val dateKey = DateUtil.dateKey()
-        val previousToday = db.settingDao().getInt(SettingsKeys.deals(dateKey))
-        db.settingDao().setInt(SettingsKeys.deals(dateKey), count)
-
-        val currentTotal = db.settingDao().getInt(SettingsKeys.TOTAL_DEALS)
-        val newTotal = currentTotal - previousToday + count
-        db.settingDao().setInt(SettingsKeys.TOTAL_DEALS, if (newTotal < 0) 0 else newTotal)
+        dailyStatsService.updateDailyMetric(DateUtil.dateKey(), "DEAL", count)
     }
 
     // ==================== XP 发放 ====================

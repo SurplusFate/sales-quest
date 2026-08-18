@@ -8,21 +8,38 @@ import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
 import com.salesquest.sales_quest.ui.BattleStats
 import com.salesquest.sales_quest.ui.TotalStats
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-/** 数据分析 ViewModel - 今日/累计数据 + 今日执行度 */
+/** 数据分析 ViewModel - 任意历史日期查看/录入/修改 + 累计数据 */
 class AnalyticsViewModel : ViewModel() {
 
     private val db = AppContainer.db
-    private val todayDateKey = DateUtil.dateKey()
+    private val statsService = AppContainer.dailyStatsService
 
     private val settingsFlow = db.settingDao().watchAll()
 
+    /** 当前选中的日期 (默认今天, 可切换任意过去日期) */
+    private val selectedDateKeyFlow = MutableStateFlow(DateUtil.dateKey())
+
+    /** 当前选中日期的数据 */
+    val selectedStats: StateFlow<BattleStats> = combine(settingsFlow, selectedDateKeyFlow) { settings, dateKey ->
+        val map = settings.associate { it.key to it.value }
+        BattleStats(
+            peopleSeen = map[SettingsKeys.peopleSeen(dateKey)]?.toIntOrNull() ?: 0,
+            queries = map[SettingsKeys.queries(dateKey)]?.toIntOrNull() ?: 0,
+            deals = map[SettingsKeys.deals(dateKey)]?.toIntOrNull() ?: 0
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BattleStats())
+
+    /** 今天的数据 (首页同源) */
     val today: StateFlow<BattleStats> = settingsFlow.map { settings ->
         val map = settings.associate { it.key to it.value }
+        val todayDateKey = DateUtil.dateKey()
         BattleStats(
             peopleSeen = map[SettingsKeys.peopleSeen(todayDateKey)]?.toIntOrNull() ?: 0,
             queries = map[SettingsKeys.queries(todayDateKey)]?.toIntOrNull() ?: 0,
@@ -40,7 +57,7 @@ class AnalyticsViewModel : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TotalStats())
 
     /** 今日执行度 = 参与任务的进度均值 */
-    val executionRate: StateFlow<Double> = db.taskDao().watchByDate(todayDateKey).map { tasks: List<DailyTaskEntity> ->
+    val executionRate: StateFlow<Double> = db.taskDao().watchByDate(DateUtil.dateKey()).map { tasks: List<DailyTaskEntity> ->
         if (tasks.isEmpty()) return@map 0.0
         var sum = 0.0
         for (task in tasks) {
@@ -50,4 +67,40 @@ class AnalyticsViewModel : ViewModel() {
         }
         sum / tasks.size
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    // ==================== 操作 ====================
+
+    /** 切换选中日期 */
+    fun selectDate(dateKey: String) {
+        selectedDateKeyFlow.value = dateKey
+    }
+
+    /** 当前选中日期 */
+    fun currentDateKey(): String = selectedDateKeyFlow.value
+
+    /**
+     * 整组保存某天数据 (历史录入/修改)
+     * 校验失败时抛出 IllegalArgumentException (中文提示)
+     */
+    suspend fun updateDailyStats(dateKey: String, peopleSeen: Int, queries: Int, deals: Int) {
+        statsService.updateDailyStats(dateKey, peopleSeen, queries, deals)
+    }
+
+    /** 单指标更新某天数据 (供编辑对话框) */
+    suspend fun updateDailyMetric(dateKey: String, metricCode: String, newValue: Int) {
+        statsService.updateDailyMetric(dateKey, metricCode, newValue)
+    }
+
+    /**
+     * 历史编辑: 读取当前日期的其它指标值, 组合成整组后校验并保存
+     * 校验失败时抛出 IllegalArgumentException (中文提示)
+     */
+    suspend fun editDailyMetric(dateKey: String, metricCode: String, newValue: Int) {
+        if (newValue < 0) throw IllegalArgumentException("数字不能为负数")
+        val current = statsService.getDailyStats(dateKey)
+        val peopleSeen = if (metricCode == "MEET") newValue else current.peopleSeen
+        val queries = if (metricCode == "QUERY") newValue else current.queries
+        val deals = if (metricCode == "DEAL") newValue else current.deals
+        statsService.updateDailyStats(dateKey, peopleSeen, queries, deals)
+    }
 }
