@@ -7,13 +7,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -41,14 +45,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.core.AppLevels
+import com.salesquest.sales_quest.data.AppDatabase
 import kotlinx.coroutines.launch
 
-/** 设置页 - 数据管理 + 关于 */
+/** 设置页 - 数据 / 云备份 / 应用 三个区域 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsPage(
     onBack: () -> Unit = {},
     onOpenTaskConfig: () -> Unit = {},
+    onOpenConfigFile: () -> Unit = {},
+    onOpenWebDav: () -> Unit = {},
+    onOpenSummary: () -> Unit = {},
     onOpenLogs: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
@@ -86,7 +94,23 @@ fun SettingsPage(
                 )
             }
 
-            item { SettingsGroup("数据管理") }
+            item { SettingsGroup("数据") }
+            item {
+                SettingsListItem(
+                    icon = Icons.Filled.Description,
+                    title = "配置文件",
+                    subtitle = "导入 / 导出 JSON 配置",
+                    onClick = onOpenConfigFile
+                )
+            }
+            item {
+                SettingsListItem(
+                    icon = Icons.Filled.EditNote,
+                    title = "总结",
+                    subtitle = "每日总结 / 周总结",
+                    onClick = onOpenSummary
+                )
+            }
             item {
                 SettingsListItem(
                     icon = Icons.Filled.Today,
@@ -105,35 +129,50 @@ fun SettingsPage(
                 )
             }
 
-            item { SettingsGroup("关于") }
+            item { SettingsGroup("云备份") }
+            item {
+                SettingsListItem(
+                    icon = Icons.Filled.Cloud,
+                    title = "坚果云 WebDAV",
+                    subtitle = "账号配置 / 备份 / 恢复 / 自动备份",
+                    onClick = onOpenWebDav
+                )
+            }
+
+            item { SettingsGroup("应用") }
             item {
                 SettingsListItem(
                     icon = Icons.Filled.Info,
-                    title = "版本",
+                    title = "当前版本",
                     trailing = { Text("V1.0") }
                 )
             }
             item {
                 SettingsListItem(
-                    icon = Icons.Filled.Description,
+                    icon = Icons.Filled.Storage,
+                    title = "数据库版本",
+                    trailing = { Text("v${AppDatabase.VERSION}") }
+                )
+            }
+            item {
+                SettingsListItem(
+                    icon = Icons.Filled.SportsEsports,
+                    title = "关于 Sales Quest",
+                    subtitle = "游戏化销售作战系统"
+                )
+            }
+            item {
+                SettingsListItem(
+                    icon = Icons.Filled.Backup,
                     title = "开发日志",
                     onClick = onOpenLogs
                 )
             }
             item {
                 SettingsListItem(
-                    icon = Icons.Filled.SportsEsports,
-                    title = "产品说明",
-                    subtitle = "Sales Quest - 游戏化销售作战系统"
-                )
-            }
-
-            item { SettingsGroup("游戏化") }
-            item {
-                SettingsListItem(
                     icon = Icons.Filled.MilitaryTech,
                     title = "等级系统",
-                    subtitle = "共 ${AppLevels.levels.size} 个等级"
+                    subtitle = "共 ${AppLevels.levels.size} 个等级, 含晋级条件"
                 )
             }
         }

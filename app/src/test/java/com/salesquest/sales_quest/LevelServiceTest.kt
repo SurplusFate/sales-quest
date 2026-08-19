@@ -1,0 +1,191 @@
+package com.salesquest.sales_quest
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.salesquest.sales_quest.core.AppLevels
+import com.salesquest.sales_quest.core.LevelConditionType
+import com.salesquest.sales_quest.core.LevelRequirement
+import com.salesquest.sales_quest.data.AppDatabase
+import com.salesquest.sales_quest.data.entity.LevelRequirementEntity
+import com.salesquest.sales_quest.services.LevelService
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+
+/**
+ * 等级晋级条件服务测试 (v2)
+ *
+ * 核心: 升级必须同时满足 XP + 全部晋级条件 (累计见人/查询/成交等)
+ */
+@RunWith(RobolectricTestRunner::class)
+class LevelServiceTest {
+
+    private lateinit var db: AppDatabase
+    private lateinit var service: LevelService
+
+    @Before
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        service = LevelService(db)
+    }
+
+    @After
+    fun tearDown() {
+        db.close()
+    }
+
+    private fun req(level: Int, type: LevelConditionType, threshold: Int) =
+        LevelRequirement(level, type, threshold)
+
+    // ================================================================
+    // 纯函数: evaluateCurrentLevel
+    // ================================================================
+
+    @Test
+    fun XP达标但累计见人未达标_不能升到下一级() {
+        val reqs = listOf(
+            req(2, LevelConditionType.XP, 100),
+            req(3, LevelConditionType.XP, 300),
+            req(3, LevelConditionType.TOTAL_MEET, 50),
+            req(3, LevelConditionType.TOTAL_QUERY, 10),
+            req(4, LevelConditionType.XP, 600),
+            req(4, LevelConditionType.TOTAL_DEAL, 5)
+        )
+        // XP 1000 足以到达 Lv3 的 XP 门槛, 但累计见人 10 < 50, 查询 5 < 10; Lv4 需成交 5 也未满足
+        val level = LevelService.evaluateCurrentLevel(reqs, totalXp = 1000, totalMeet = 10, totalQuery = 5, totalDeal = 0, streakDays = 0)
+        assertEquals(2, level)
+    }
+
+    @Test
+    fun XP与全部累计条件满足_可以晋级() {
+        val reqs = listOf(
+            req(2, LevelConditionType.XP, 100),
+            req(3, LevelConditionType.XP, 300),
+            req(3, LevelConditionType.TOTAL_MEET, 50),
+            req(3, LevelConditionType.TOTAL_QUERY, 10),
+            req(4, LevelConditionType.XP, 600),
+            req(4, LevelConditionType.TOTAL_DEAL, 5)
+        )
+        val level = LevelService.evaluateCurrentLevel(reqs, totalXp = 1000, totalMeet = 50, totalQuery = 10, totalDeal = 4, streakDays = 0)
+        assertEquals(3, level)
+    }
+
+    @Test
+    fun 无条件等级_仅按XP门槛升级() {
+        // 无条件的等级: 只依赖 XP
+        val reqs = listOf(req(2, LevelConditionType.XP, 100))
+        val level = LevelService.evaluateCurrentLevel(reqs, totalXp = 100, totalMeet = 0, totalQuery = 0, totalDeal = 0, streakDays = 0)
+        assertEquals(2, level)
+    }
+
+    @Test
+    fun 默认晋级条件生效_等级3需XP加累计见人查询() {
+        val level = LevelService.evaluateCurrentLevel(
+            AppLevels.defaultRequirements,
+            totalXp = 500,
+            totalMeet = 49,
+            totalQuery = 9,
+            totalDeal = 0,
+            streakDays = 0
+        )
+        // Lv3 需要 XP 300 + 见人 50 + 查询 10, 均差一点
+        assertEquals(2, level)
+    }
+
+    @Test
+    fun 默认晋级条件_满足后升级到3() {
+        val level = LevelService.evaluateCurrentLevel(
+            AppLevels.defaultRequirements,
+            totalXp = 500,
+            totalMeet = 50,
+            totalQuery = 10,
+            totalDeal = 0,
+            streakDays = 0
+        )
+        assertEquals(3, level)
+    }
+
+    @Test
+    fun buildProgress_返回距离下一级的各条件进度() {
+        val reqs = listOf(
+            req(2, LevelConditionType.XP, 100),
+            req(3, LevelConditionType.XP, 300),
+            req(3, LevelConditionType.TOTAL_MEET, 50)
+        )
+        val progress = LevelService.buildProgress(reqs, totalXp = 300, totalMeet = 30, totalQuery = 0, totalDeal = 0, streakDays = 0)
+        assertEquals(2, progress.currentLevel.level)
+        assertEquals(3, progress.nextLevel?.level)
+        assertFalse(progress.isMaxLevel)
+        assertEquals(2, progress.requirements.size)
+        // XP 条件已达标
+        assertTrue(progress.requirements.first { it.type == LevelConditionType.XP }.met)
+        // 累计见人未达标
+        assertFalse(progress.requirements.first { it.type == LevelConditionType.TOTAL_MEET }.met)
+        assertEquals(30, progress.requirements.first { it.type == LevelConditionType.TOTAL_MEET }.current)
+        assertEquals(50, progress.requirements.first { it.type == LevelConditionType.TOTAL_MEET }.threshold)
+    }
+
+    @Test
+    fun 最高等级_isMaxLevel为true且无下一级() {
+        val reqs = listOf(req(2, LevelConditionType.XP, 100), req(8, LevelConditionType.XP, 6000))
+        val progress = LevelService.buildProgress(reqs, totalXp = 10000, totalMeet = 0, totalQuery = 0, totalDeal = 0, streakDays = 0)
+        assertEquals(8, progress.currentLevel.level)
+        assertTrue(progress.isMaxLevel)
+        assertEquals(null, progress.nextLevel)
+    }
+
+    // ================================================================
+    // DB 集成: 配置的条件生效
+    // ================================================================
+
+    @Test
+    fun 数据库配置条件_升级判定生效() = runTest {
+        db.levelRequirementDao().insert(
+            LevelRequirementEntity(id = "t1", level = 3, conditionType = "TOTAL_DEAL", threshold = 5)
+        )
+        db.levelRequirementDao().insert(
+            LevelRequirementEntity(id = "t2", level = 3, conditionType = "XP", threshold = 300)
+        )
+        val reqs = service.getRequirements()
+        assertEquals(2, reqs.size)
+        assertTrue(reqs.all { it.level == 3 })
+        val level = LevelService.evaluateCurrentLevel(reqs, totalXp = 500, totalMeet = 0, totalQuery = 0, totalDeal = 4, streakDays = 0)
+        assertEquals(2, level)
+        val level2 = LevelService.evaluateCurrentLevel(reqs, totalXp = 500, totalMeet = 0, totalQuery = 0, totalDeal = 5, streakDays = 0)
+        assertEquals(3, level2)
+    }
+
+    @Test
+    fun getProgress_从数据库汇总统计() = runTest {
+        db.statsDao().insertStats(
+            com.salesquest.sales_quest.data.entity.UserStatEntity(totalXp = 400, currentLevel = 1, streakDays = 3)
+        )
+        db.settingDao().setInt(com.salesquest.sales_quest.core.SettingsKeys.TOTAL_MEETS, 60)
+        db.settingDao().setInt(com.salesquest.sales_quest.core.SettingsKeys.TOTAL_QUERIES, 12)
+
+        val progress = service.getProgress()
+        assertEquals(400, progress.totalXp)
+        // 默认条件下 Lv3 需 XP300+见人50+查询10, 全部满足
+        assertEquals(3, progress.currentLevel.level)
+    }
+
+    @Test
+    fun getNextLevelRequirements_返回下一级条件() = runTest {
+        db.statsDao().insertStats(
+            com.salesquest.sales_quest.data.entity.UserStatEntity(totalXp = 50, currentLevel = 1, streakDays = 0)
+        )
+        val next = service.getNextLevelRequirements()
+        assertEquals(2, next.first().level)
+        assertTrue(next.any { it.conditionType == LevelConditionType.XP })
+    }
+}

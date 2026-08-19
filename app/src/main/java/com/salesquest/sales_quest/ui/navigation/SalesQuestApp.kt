@@ -24,8 +24,11 @@ import com.salesquest.sales_quest.ui.customers.CustomerListPage
 import com.salesquest.sales_quest.ui.data.AnalyticsPage
 import com.salesquest.sales_quest.ui.dev.LogViewerPage
 import com.salesquest.sales_quest.ui.home.HomePage
+import com.salesquest.sales_quest.ui.settings.ConfigPage
 import com.salesquest.sales_quest.ui.settings.SettingsPage
 import com.salesquest.sales_quest.ui.settings.TaskConfigPage
+import com.salesquest.sales_quest.ui.settings.WebDavPage
+import com.salesquest.sales_quest.ui.summary.SummaryPage
 
 @Composable
 fun SalesQuestApp() {
@@ -113,11 +116,23 @@ fun SalesQuestApp() {
                 SettingsPage(
                     onBack = { navController.popBackStack() },
                     onOpenTaskConfig = { navController.navigate("settings/task-config") },
+                    onOpenConfigFile = { navController.navigate("settings/config") },
+                    onOpenWebDav = { navController.navigate("settings/webdav") },
+                    onOpenSummary = { navController.navigate("settings/summary") },
                     onOpenLogs = { navController.navigate("dev/logs") }
                 )
             }
             composable("settings/task-config") {
                 TaskConfigPage(onBack = { navController.popBackStack() })
+            }
+            composable("settings/config") {
+                ConfigPage(onBack = { navController.popBackStack() })
+            }
+            composable("settings/webdav") {
+                WebDavPage(onBack = { navController.popBackStack() })
+            }
+            composable("settings/summary") {
+                SummaryPage(onBack = { navController.popBackStack() })
             }
             composable("dev/logs") {
                 LogViewerPage(onBack = { navController.popBackStack() })

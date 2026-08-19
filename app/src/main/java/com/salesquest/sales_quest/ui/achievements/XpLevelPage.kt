@@ -45,8 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.core.AppLevels
 import com.salesquest.sales_quest.core.LevelDef
+import com.salesquest.sales_quest.services.LevelProgress
 
-/** 等级详情页 - 当前等级大圆 + XP 进度条 + 全部等级路线 */
+/** 等级详情页 - 当前等级大圆 + XP 进度条 + 距离下一级条件 + 全部等级路线 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun XpLevelPage(
@@ -54,10 +55,11 @@ fun XpLevelPage(
     viewModel: XpLevelViewModel = viewModel()
 ) {
     val totalXp by viewModel.totalXp.collectAsState()
+    val progress by viewModel.progress.collectAsState()
 
-    val currentLevel = AppLevels.getLevel(totalXp)
-    val nextLevel = AppLevels.getNextLevel(totalXp)
-    val progress = AppLevels.getProgress(totalXp)
+    val currentLevel = progress?.currentLevel ?: AppLevels.getLevel(totalXp)
+    val nextLevel = progress?.nextLevel ?: AppLevels.getNextLevel(totalXp)
+    val xpProgress = AppLevels.getProgress(totalXp)
 
     Scaffold(
         topBar = {
@@ -83,9 +85,33 @@ fun XpLevelPage(
                     level = currentLevel,
                     nextLevel = nextLevel,
                     totalXp = totalXp,
-                    progress = progress
+                    progress = xpProgress
                 )
             }
+
+            // === 晋级条件 (距离下一级还差什么) ===
+            if (progress != null && progress!!.requirements.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        "距离下一等级",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    RequirementCard(progress = progress!!)
+                }
+            } else if (progress != null && progress!!.isMaxLevel) {
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        "已达最高等级!",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             item {
                 Spacer(Modifier.height(20.dp))
                 Text(
@@ -101,6 +127,57 @@ fun XpLevelPage(
                     currentLevel = currentLevel,
                     totalXp = totalXp
                 )
+            }
+        }
+    }
+}
+
+/** 晋级条件卡片 - 显示距下一级各条件当前值/目标 */
+@Composable
+fun RequirementCard(progress: LevelProgress) {
+    val theme = MaterialTheme.colorScheme
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            progress.nextLevel?.let { next ->
+                Text(
+                    "Lv.${next.level} ${next.title}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = theme.primary
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+            progress.requirements.forEach { req ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        req.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    val metColor = if (req.met) Color(0xFF4CAF50) else theme.onSurfaceVariant
+                    Text(
+                        "${req.current} / ${req.threshold}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = if (req.met) metColor else theme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        if (req.met) Icons.Filled.CheckCircle else Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = metColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
     }

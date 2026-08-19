@@ -28,6 +28,9 @@ interface FollowUpDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFollowUp(followUp: FollowUpEntity)
 
+    @Query("SELECT * FROM follow_ups")
+    suspend fun getAll(): List<FollowUpEntity>
+
     @Query("UPDATE follow_ups SET completed = 1, completedAt = :completedAt WHERE id = :id")
     suspend fun markCompleted(id: String, completedAt: Long)
 

@@ -45,7 +45,7 @@ class NavigationTest {
     }
 
     @Test
-    fun 底部导航应显示四个tab且默认在首页() {
+    fun 底部导航应显示五个tab且默认在首页() {
         composeRule.setContent { SalesQuestApp() }
         composeRule.waitForIdle()
 
@@ -53,7 +53,20 @@ class NavigationTest {
         composeRule.onNodeWithText("客户").assertIsDisplayed()
         composeRule.onNodeWithText("数据").assertIsDisplayed()
         composeRule.onNodeWithText("成就").assertIsDisplayed()
+        composeRule.onNodeWithText("设置").assertIsDisplayed()
         composeRule.onNodeWithText("今日作战 (点击数字修改)").assertIsDisplayed()
+    }
+
+    @Test
+    fun 切换到设置tab应显示设置页() {
+        composeRule.setContent { SalesQuestApp() }
+        composeRule.waitForIdle()
+
+        composeRule.onNode(hasText("设置") and hasClickAction()).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("基础任务设置").assertIsDisplayed()
+        composeRule.onNodeWithText("配置文件").assertIsDisplayed()
     }
 
     @Test

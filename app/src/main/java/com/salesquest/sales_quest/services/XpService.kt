@@ -1,7 +1,6 @@
 package com.salesquest.sales_quest.services
 
 import androidx.room.withTransaction
-import com.salesquest.sales_quest.core.AppLevels
 import com.salesquest.sales_quest.core.AppLogger
 import com.salesquest.sales_quest.core.SettingsKeys
 import com.salesquest.sales_quest.core.XpRewards
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.firstOrNull
 class XpService(private val db: AppDatabase) {
 
     private val dailyStatsService = DailyStatsService(db)
+    private val levelService = LevelService(db)
 
     // ==================== 数据操作 (不再更新 streak) ====================
 
@@ -81,7 +81,7 @@ class XpService(private val db: AppDatabase) {
 
             val stats = getOrCreateStats()
             val newTotalXp = stats.totalXp + xpAmount
-            val newLevel = AppLevels.getLevel(newTotalXp).level
+            val newLevel = computeLevelWithConditions(newTotalXp)
             db.statsDao().updateStats(
                 totalXp = newTotalXp,
                 currentLevel = newLevel,
@@ -117,7 +117,7 @@ class XpService(private val db: AppDatabase) {
 
             val stats = getOrCreateStats()
             val newTotalXp = stats.totalXp + totalXp
-            val newLevel = AppLevels.getLevel(newTotalXp).level
+            val newLevel = computeLevelWithConditions(newTotalXp)
             db.statsDao().updateStats(
                 totalXp = newTotalXp,
                 currentLevel = newLevel,
@@ -162,7 +162,7 @@ class XpService(private val db: AppDatabase) {
             }
 
             val newTotalXp = stats.totalXp + XpRewards.dailyCompletionBonus
-            val newLevel = AppLevels.getLevel(newTotalXp).level
+            val newLevel = computeLevelWithConditions(newTotalXp)
             db.statsDao().updateStats(
                 totalXp = newTotalXp,
                 currentLevel = newLevel,
@@ -183,5 +183,22 @@ class XpService(private val db: AppDatabase) {
         val stats = UserStatEntity(id = "default")
         db.statsDao().insertStats(stats)
         return stats
+    }
+
+    /** 基于晋级条件计算当前等级 (XP + 累计指标) */
+    private suspend fun computeLevelWithConditions(newTotalXp: Int): Int {
+        val requirements = levelService.getRequirements()
+        val totalMeet = db.settingDao().getInt(SettingsKeys.TOTAL_MEETS)
+        val totalQuery = db.settingDao().getInt(SettingsKeys.TOTAL_QUERIES)
+        val totalDeal = db.settingDao().getInt(SettingsKeys.TOTAL_DEALS)
+        val stats = getOrCreateStats()
+        return LevelService.evaluateCurrentLevel(
+            requirements = requirements,
+            totalXp = newTotalXp,
+            totalMeet = totalMeet,
+            totalQuery = totalQuery,
+            totalDeal = totalDeal,
+            streakDays = stats.streakDays
+        )
     }
 }

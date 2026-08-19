@@ -7,6 +7,22 @@ package com.salesquest.sales_quest.core
 /** 等级定义 */
 data class LevelDef(val level: Int, val title: String, val xpRequired: Int)
 
+/** 晋级条件类型 */
+enum class LevelConditionType(val label: String) {
+    XP("XP"),
+    TOTAL_MEET("累计见人"),
+    TOTAL_QUERY("累计查询"),
+    TOTAL_DEAL("累计成交"),
+    STREAK_DAYS("连续作战天数")
+}
+
+/** 晋级条件 (配置化) */
+data class LevelRequirement(
+    val level: Int,
+    val conditionType: LevelConditionType,
+    val threshold: Int
+)
+
 object AppLevels {
     val levels: List<LevelDef> = listOf(
         LevelDef(1, "销售新人", 0),
@@ -17,6 +33,26 @@ object AppLevels {
         LevelDef(6, "销售达人", 2000),
         LevelDef(7, "销售大师", 3500),
         LevelDef(8, "销售王者", 6000)
+    )
+
+    /** 默认晋级条件 (Lv2 起, 配置化; 导入配置可覆盖) */
+    val defaultRequirements: List<LevelRequirement> = listOf(
+        LevelRequirement(2, LevelConditionType.XP, 100),
+        LevelRequirement(3, LevelConditionType.XP, 300),
+        LevelRequirement(3, LevelConditionType.TOTAL_MEET, 50),
+        LevelRequirement(3, LevelConditionType.TOTAL_QUERY, 10),
+        LevelRequirement(4, LevelConditionType.XP, 600),
+        LevelRequirement(4, LevelConditionType.TOTAL_MEET, 150),
+        LevelRequirement(4, LevelConditionType.TOTAL_QUERY, 30),
+        LevelRequirement(5, LevelConditionType.XP, 1200),
+        LevelRequirement(5, LevelConditionType.TOTAL_QUERY, 100),
+        LevelRequirement(5, LevelConditionType.TOTAL_DEAL, 5),
+        LevelRequirement(6, LevelConditionType.XP, 2000),
+        LevelRequirement(6, LevelConditionType.TOTAL_DEAL, 15),
+        LevelRequirement(7, LevelConditionType.XP, 3500),
+        LevelRequirement(7, LevelConditionType.TOTAL_MEET, 800),
+        LevelRequirement(8, LevelConditionType.XP, 6000),
+        LevelRequirement(8, LevelConditionType.TOTAL_DEAL, 40)
     )
 
     fun getLevel(totalXp: Int): LevelDef {
@@ -135,4 +171,31 @@ object SettingsKeys {
     fun taskXp(taskId: String, dateKey: String) = "task_xp_${taskId}_$dateKey"
     fun dailyCompletion(dateKey: String) = "daily_completion_$dateKey"
     fun dealExtraXpAwarded(dateKey: String) = "deal_extra_xp_awarded_$dateKey"
+}
+
+/** 配置文件导入/导出相关键 */
+object ConfigKeys {
+    const val CONFIG_VERSION = 1
+    const val IMPORTED_CONFIG_VERSION = "imported_config_version"
+    const val IMPORTED_CONFIG_AT = "imported_config_at"
+}
+
+/** 云备份配置键 (密码走 EncryptedSharedPreferences) */
+object BackupKeys {
+    const val PREFS_BACKUP = "backup_prefs"
+    const val WEBDAV_URL = "webdav_url"
+    const val WEBDAV_USERNAME = "webdav_username"
+    const val WEBDAV_PASSWORD = "webdav_password"
+    const val WEBDAV_DIR = "webdav_dir"
+    const val AUTO_BACKUP_ENABLED = "auto_backup_enabled"
+    const val LAST_BACKUP_AT = "last_backup_at"
+    const val BACKUP_FILENAME_PREFIX = "sales_quest_backup_"
+    const val DB_BACKUP_SUFFIX = ".db"
+}
+
+/** 云备份默认配置 */
+object BackupDefaults {
+    const val DEFAULT_WEBDAV_DIR = "/SalesQuest"
+    const val AUTO_BACKUP_DAILY = true
+    const val AUTO_BACKUP_INTERVAL_MS = 24L * 60 * 60 * 1000
 }

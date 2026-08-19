@@ -7,9 +7,16 @@ import com.salesquest.sales_quest.data.IdGenerator
 import com.salesquest.sales_quest.data.Operator
 import com.salesquest.sales_quest.data.entity.CustomerEntity
 import com.salesquest.sales_quest.services.AchievementService
+import com.salesquest.sales_quest.services.BackupService
+import com.salesquest.sales_quest.services.ConfigService
 import com.salesquest.sales_quest.services.DailyStatsService
+import com.salesquest.sales_quest.services.DailySummaryService
 import com.salesquest.sales_quest.services.DailyTaskService
+import com.salesquest.sales_quest.services.LevelService
 import com.salesquest.sales_quest.services.QuickActionService
+import com.salesquest.sales_quest.services.WebDavConfigStore
+import com.salesquest.sales_quest.services.WebDavService
+import com.salesquest.sales_quest.services.WeeklySummaryService
 import com.salesquest.sales_quest.services.XpService
 
 /**
@@ -35,6 +42,27 @@ object AppContainer {
     lateinit var dailyStatsService: DailyStatsService
         private set
 
+    lateinit var configService: ConfigService
+        private set
+
+    lateinit var levelService: LevelService
+        private set
+
+    lateinit var backupService: BackupService
+        private set
+
+    lateinit var webDavConfigStore: WebDavConfigStore
+        private set
+
+    lateinit var webDavService: WebDavService
+        private set
+
+    lateinit var dailySummaryService: DailySummaryService
+        private set
+
+    lateinit var weeklySummaryService: WeeklySummaryService
+        private set
+
     var isInitialized: Boolean = false
         private set
 
@@ -46,6 +74,13 @@ object AppContainer {
         achievementService = AchievementService(db)
         quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService)
         dailyStatsService = DailyStatsService(db)
+        configService = ConfigService(db)
+        levelService = LevelService(db)
+        backupService = BackupService(db)
+        webDavConfigStore = WebDavConfigStore(context)
+        webDavService = WebDavService(context, webDavConfigStore, backupService)
+        dailySummaryService = DailySummaryService(db)
+        weeklySummaryService = WeeklySummaryService(db)
         isInitialized = true
         AppLogger.info("AppContainer", "服务初始化完成")
     }
@@ -58,6 +93,11 @@ object AppContainer {
         achievementService = AchievementService(db)
         quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService)
         dailyStatsService = DailyStatsService(db)
+        configService = ConfigService(db)
+        levelService = LevelService(db)
+        backupService = BackupService(db)
+        dailySummaryService = DailySummaryService(db)
+        weeklySummaryService = WeeklySummaryService(db)
         isInitialized = true
     }
 

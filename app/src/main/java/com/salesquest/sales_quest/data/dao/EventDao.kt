@@ -16,6 +16,9 @@ interface EventDao {
     @Query("SELECT * FROM customer_events WHERE customerId = :customerId ORDER BY eventTime DESC")
     suspend fun getByCustomer(customerId: String): List<CustomerEventEntity>
 
+    @Query("SELECT * FROM customer_events")
+    suspend fun getAll(): List<CustomerEventEntity>
+
     @Query(
         "SELECT * FROM customer_events WHERE customerId = :customerId AND eventType = :eventType " +
             "AND eventTime >= :start AND eventTime < :end"

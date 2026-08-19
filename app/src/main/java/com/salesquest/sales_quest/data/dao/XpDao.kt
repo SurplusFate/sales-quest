@@ -16,6 +16,9 @@ interface XpDao {
     @Query("SELECT COALESCE(SUM(xp), 0) FROM xp_records")
     suspend fun getTotalXp(): Int
 
+    @Query("SELECT * FROM xp_records")
+    suspend fun getAll(): List<XpRecordEntity>
+
     @Query("SELECT COALESCE(SUM(xp), 0) FROM xp_records")
     fun watchTotalXp(): Flow<Int>
 

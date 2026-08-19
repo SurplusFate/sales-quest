@@ -17,6 +17,9 @@ interface TaskDao {
     @Query("SELECT * FROM daily_tasks WHERE date = :date")
     suspend fun getByDate(date: String): List<DailyTaskEntity>
 
+    @Query("SELECT * FROM daily_tasks")
+    suspend fun getAll(): List<DailyTaskEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertTask(task: DailyTaskEntity)
 

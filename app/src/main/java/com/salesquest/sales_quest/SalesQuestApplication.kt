@@ -27,5 +27,14 @@ class SalesQuestApplication : Application() {
                 AppLogger.error("App", "ensureTodayTasks 失败: $e", e.stackTraceToString())
             }
         }
+
+        // 自动备份 (WebDAV 开启且距上次超 24h 时)
+        appScope.launch {
+            try {
+                AppContainer.webDavService.maybeAutoBackup()
+            } catch (e: Exception) {
+                AppLogger.error("App", "自动备份失败: $e", e.stackTraceToString())
+            }
+        }
     }
 }
