@@ -1,9 +1,6 @@
 package com.salesquest.sales_quest.ui.navigation
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -27,19 +24,9 @@ import com.salesquest.sales_quest.ui.customers.CustomerListPage
 import com.salesquest.sales_quest.ui.data.AnalyticsPage
 import com.salesquest.sales_quest.ui.dev.LogViewerPage
 import com.salesquest.sales_quest.ui.home.HomePage
-import com.salesquest.sales_quest.ui.home.QuickActionSheet
 import com.salesquest.sales_quest.ui.settings.SettingsPage
 import com.salesquest.sales_quest.ui.settings.TaskConfigPage
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.Modifier as UiModifier
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SalesQuestApp() {
     val navController = rememberNavController()
@@ -49,8 +36,6 @@ fun SalesQuestApp() {
     val currentTab = AppTab.entries.firstOrNull { tab ->
         currentDestination?.hierarchy?.any { it.route == tab.route } == true
     }
-
-    var showQuickAction by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = {
@@ -79,22 +64,12 @@ fun SalesQuestApp() {
                     )
                 }
             }
-        },
-        floatingActionButton = {
-            if (currentTab != null) {
-                FloatingActionButton(
-                    onClick = { showQuickAction = true },
-                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Icon(Icons.Filled.EditNote, contentDescription = "快速记录")
-                }
-            }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = "home",
-            modifier = UiModifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding)
         ) {
             // 底部 4 tab
             composable("home") {
@@ -147,15 +122,6 @@ fun SalesQuestApp() {
             composable("dev/logs") {
                 LogViewerPage(onBack = { navController.popBackStack() })
             }
-        }
-    }
-
-    if (showQuickAction) {
-        ModalBottomSheet(
-            onDismissRequest = { showQuickAction = false },
-            sheetState = rememberModalBottomSheetState()
-        ) {
-            QuickActionSheet(onDone = { showQuickAction = false })
         }
     }
 }

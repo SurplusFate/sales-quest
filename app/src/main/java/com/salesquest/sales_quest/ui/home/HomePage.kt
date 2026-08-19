@@ -28,16 +28,19 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,6 +65,7 @@ import com.salesquest.sales_quest.ui.HomeUiState
 import kotlinx.coroutines.launch
 
 /** 作战首页 - V1.0 核心 Dashboard */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(
     onNavigateToTaskConfig: () -> Unit = {},
@@ -71,6 +75,7 @@ fun HomePage(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var editMetric by remember { mutableStateOf<EditMetricRequest?>(null) }
+    var showDailyEntry by remember { mutableStateOf(false) }
 
     Box {
         Column(
@@ -95,13 +100,19 @@ fun HomePage(
             Spacer(Modifier.height(12.dp))
 
             // === 今日作战 (可点击直接编辑) ===
-            Text(
-                "今日作战 (点击数字修改)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "今日作战 (点击数字修改)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = { showDailyEntry = true }) {
+                    Text("每日任务", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            Spacer(Modifier.height(4.dp))
             Row {
                 EditableStatCard(
                     value = state.stats.peopleSeen,
@@ -205,6 +216,15 @@ fun HomePage(
                 }
             }
         )
+    }
+
+    if (showDailyEntry) {
+        ModalBottomSheet(
+            onDismissRequest = { showDailyEntry = false },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            QuickActionSheet(onDone = { showDailyEntry = false })
+        }
     }
 }
 

@@ -111,11 +111,11 @@ class HomePageUiTest {
     }
 
     @Test
-    fun 快速记录面板应能批量修改三个数据() = runBlocking {
+    fun 每日基础任务面板应能批量修改三个数据() = runBlocking {
         composeRule.setContent { QuickActionSheet(onDone = {}) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("快速记录").assertIsDisplayed()
+        composeRule.onNodeWithText("每日基础任务").assertIsDisplayed()
         composeRule.onNodeWithText("见人数").assertIsDisplayed()
         composeRule.onNodeWithText("查询数").assertIsDisplayed()
         composeRule.onNodeWithText("成交数").assertIsDisplayed()
