@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -55,10 +56,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.data.DateUtil
 import kotlinx.coroutines.launch
 
-/** 数据分析页 - 任意历史日期查看/录入/修改 + 累计数据 */
+/** 数据分析页 - 任意历史日期查看/录入/修改 + 累计数据 + 总结入口 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsPage(viewModel: AnalyticsViewModel = viewModel()) {
+fun AnalyticsPage(
+    onOpenSummary: () -> Unit = {},
+    viewModel: AnalyticsViewModel = viewModel()
+) {
     val today by viewModel.today.collectAsState()
     val total by viewModel.total.collectAsState()
     val selectedStats by viewModel.selectedStats.collectAsState()
@@ -133,6 +137,32 @@ fun AnalyticsPage(viewModel: AnalyticsViewModel = viewModel()) {
                 SectionTitle("累计数据")
                 Spacer(Modifier.height(8.dp))
                 CoreStatsRow(people = total.totalMeet, queries = total.totalQuery, deals = total.totalDeal)
+            }
+
+            // === 总结入口 (属于数据复盘, 不再放在设置里) ===
+            Spacer(Modifier.height(20.dp))
+            SectionTitle("总结")
+            Spacer(Modifier.height(8.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onOpenSummary)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.EditNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("今日总结 / 周总结", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text("复盘今日工作, 查看历史总结", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }

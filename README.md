@@ -4,11 +4,11 @@
 
 面向电信运营商一线销售的轻量客户管理工具，通过游戏化等级系统和每日任务机制驱动日常陌拜工作。
 
-## 开发环境
+## 技术栈
 
-- Flutter 3.x (stable channel)
-- Dart 3.x
-- Android SDK 34+
+- Kotlin + Jetpack Compose (Android 原生)
+- Room / SQLite
+- ViewModel + Navigation Compose
 
 ## 使用方式
 
@@ -18,43 +18,54 @@
 
 ## 版本号查看
 
-首页右上角齿轮图标 → 设置页 → 关于 → 版本
+首页右上角齿轮图标 → 设置页 → 关于 → 当前版本
 
 ---
 
 ## 修改记录
 
-### v0.2.2 (2026-08-15)
+### v1.0.0 (2026-08-19) - 产品结构与业务逻辑修复
 
-- **首页添加设置入口**：AppBar 右上角增加齿轮按钮，可跳转到设置页查看版本号
-- 之前 APP 内无任何入口可进入设置页，版本号写了也看不到
+**P0: 统一 App 版本管理**
+- `build.gradle.kts`: versionName = "1.0.0", versionCode = 2
+- 设置页版本号从硬编码 `V1.0` 改为读取 `BuildConfig.VERSION_NAME`
+- 数据库 Schema Version = 2 (与 App Version 无关)
 
-### v0.2.1 (2026-08-15)
+**P0: 修复等级系统**
+- LevelService 作为等级判定唯一真实来源
+- XpLevelPage 和 HomePage 等级显示统一使用 LevelService 结果
+- LevelRow 的 reached 判定从纯 XP 改为多条件 (XP + 累计见人 + 累计查询 + 累计成交 + 连续天数)
+- 修复: XP 达标但其他条件不足时不再显示"已达到"
 
-- **修复返回键问题**：使用 `StatefulShellRoute.indexedStack` 替换 `ShellRoute`
-- 每个 tab 拥有独立导航栈，切换 tab 不产生浏览器/系统历史记录
-- `goBranch()` 替代 `context.replace()`，彻底解决返回键累积问题
-- 之前切换多个 tab 后返回键需要连续按多次才能退出
+**P0: 将总结从设置移动到数据模块**
+- 总结入口从设置页移除, 添加到数据分析页
+- 路由从 `settings/summary` 改为 `summary`
+- 设置页只保留: 任务设置 / 数据管理 / 云备份 / 应用信息
 
-### android 镜像优化 (2026-08-15)
+**P1: 修复销售漏斗约束**
+- QuickActionService 单指标更新时校验: 成交 ≤ 查询 ≤ 见人
+- 非法数据抛出 IllegalArgumentException 并提示原因
+- 修复: 首页编辑和数据录入都受漏斗约束
 
-- `settings.gradle.kts`：添加 `storage.flutter-io.cn` Flutter 引擎镜像源
-- `init.gradle`：添加 Flutter 引擎镜像，不替换 Flutter 仓库地址
-- `gradle.properties`：恢复正常内存配置
+**P1: 调整任务锁定机制**
+- 移除当天任务锁定, 允许随时修改目标
+- 防重复奖励由 XpService.awardTaskXp 的 key 机制保证
+- 修改目标不会重新发放已领取的 XP
 
-### v0.2.0 (2026-08-14)
+**P1: 首页结构优化**
+- 今日战绩: 展示今日见人/查询/成交数据
+- 记录数据: 首页"记录数据"按钮打开快速录入面板
+- 今日任务: 展示目标进度, 不承担数据录入职责
 
-- 首页布局修复：移除固定高度，使用灵活布局解决 RenderFlex overflow
-- 返回键初步修复：tab 导航从 `context.go()` 改为 `context.replace()`
-- 设置页添加版本号显示
-- 多页面返回导航统一使用 `context.pop()`
+**P1: 底部导航优化**
+- 移除底部"设置"tab, 只保留: 作战 / 客户 / 数据 / 成就
+- 设置入口: 首页右上角齿轮图标
 
-### v0.1.0 (2026-08-13)
+**P2: 清理旧版本号**
+- 全项目清理 Flutter 时代 V1.0 / 0.2.x 版本号
+- 代码注释统一更新
 
-- V1.0 完整重构，按产品开发文档重新设计
-- 基础任务自定义 + 连续作战规则
-- 首页直接输入 + 任务配置 UI + FAB 位置优化
-- 数据层三个 P0/P1 问题修复
-- 完整日志系统：全局错误捕获 / 数据库初始化追踪 / 路由跳转记录
-- 快速记录面板重新设计
-- 客户详情页、客户表单页、数据分析页、成就页、等级页
+### 历史版本 (Flutter → Android 原生迁移前)
+
+- v0.2.x: Flutter 版本 (已归档至 legacy/ 目录)
+- 项目已完成从 Flutter 到 Android 原生的完整重构

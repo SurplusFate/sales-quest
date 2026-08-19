@@ -5,10 +5,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -63,7 +63,7 @@ fun SalesQuestApp() {
                                 contentDescription = tab.label
                             )
                         },
-                        label = { androidx.compose.material3.Text(tab.label) }
+                        label = { Text(tab.label) }
                     )
                 }
             }
@@ -76,7 +76,10 @@ fun SalesQuestApp() {
         ) {
             // 底部 4 tab
             composable("home") {
-                HomePage(onNavigateToTaskConfig = { navController.navigate("settings/task-config") })
+                HomePage(
+                    onNavigateToTaskConfig = { navController.navigate("settings/task-config") },
+                    onOpenSettings = { navController.navigate("settings") }
+                )
             }
             composable("customers") {
                 CustomerListPage(
@@ -84,7 +87,11 @@ fun SalesQuestApp() {
                     onOpenCustomer = { id -> navController.navigate("customer/$id") }
                 )
             }
-            composable("data") { AnalyticsPage() }
+            composable("data") {
+                AnalyticsPage(
+                    onOpenSummary = { navController.navigate("summary") }
+                )
+            }
             composable("achievements") {
                 AchievementPage(onOpenXpLevel = { navController.navigate("xp") })
             }
@@ -118,7 +125,6 @@ fun SalesQuestApp() {
                     onOpenTaskConfig = { navController.navigate("settings/task-config") },
                     onOpenConfigFile = { navController.navigate("settings/config") },
                     onOpenWebDav = { navController.navigate("settings/webdav") },
-                    onOpenSummary = { navController.navigate("settings/summary") },
                     onOpenLogs = { navController.navigate("dev/logs") }
                 )
             }
@@ -131,7 +137,7 @@ fun SalesQuestApp() {
             composable("settings/webdav") {
                 WebDavPage(onBack = { navController.popBackStack() })
             }
-            composable("settings/summary") {
+            composable("summary") {
                 SummaryPage(onBack = { navController.popBackStack() })
             }
             composable("dev/logs") {

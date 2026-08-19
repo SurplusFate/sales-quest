@@ -19,8 +19,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * 对应 legacy/test/router_navigation_test.dart:
- * 底部导航 tab 切换后按返回键不应回到上一个 tab / 二级页面返回应回到所在 tab
+ * 底部导航测试 (v1.0.0 - 4 tab, 设置不在底部)
+ *
+ * 底部 tab: 作战 / 客户 / 数据 / 成就
+ * 设置通过首页右上角图标进入
  */
 @RunWith(RobolectricTestRunner::class)
 class NavigationTest {
@@ -45,7 +47,7 @@ class NavigationTest {
     }
 
     @Test
-    fun 底部导航应显示五个tab且默认在首页() {
+    fun 底部导航应显示四个tab且默认在首页() {
         composeRule.setContent { SalesQuestApp() }
         composeRule.waitForIdle()
 
@@ -53,20 +55,8 @@ class NavigationTest {
         composeRule.onNodeWithText("客户").assertIsDisplayed()
         composeRule.onNodeWithText("数据").assertIsDisplayed()
         composeRule.onNodeWithText("成就").assertIsDisplayed()
-        composeRule.onNodeWithText("设置").assertIsDisplayed()
-        composeRule.onNodeWithText("今日作战 (点击数字修改)").assertIsDisplayed()
-    }
-
-    @Test
-    fun 切换到设置tab应显示设置页() {
-        composeRule.setContent { SalesQuestApp() }
-        composeRule.waitForIdle()
-
-        composeRule.onNode(hasText("设置") and hasClickAction()).performClick()
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithText("基础任务设置").assertIsDisplayed()
-        composeRule.onNodeWithText("配置文件").assertIsDisplayed()
+        // 设置不在底部导航
+        composeRule.onNodeWithText("今日战绩").assertIsDisplayed()
     }
 
     @Test
@@ -89,6 +79,19 @@ class NavigationTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("数据分析").assertIsDisplayed()
+    }
+
+    @Test
+    fun 数据页应显示总结入口() {
+        composeRule.setContent { SalesQuestApp() }
+        composeRule.waitForIdle()
+
+        composeRule.onNode(hasText("数据") and hasClickAction()).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("数据分析").assertIsDisplayed()
+        composeRule.onNodeWithText("总结").assertExists()
+        composeRule.onNodeWithText("今日总结 / 周总结").assertExists()
     }
 
     @Test

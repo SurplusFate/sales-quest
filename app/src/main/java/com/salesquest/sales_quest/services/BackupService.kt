@@ -91,7 +91,7 @@ class BackupService(private val db: AppDatabase) {
         }
     }
 
-    /** 校验备份数据 */
+    /** 校验备份数据 (含销售漏斗约束) */
     fun validate(data: BackupData): BackupValidationResult {
         if (data.formatVersion != 1) {
             return BackupValidationResult.Error("不支持的备份版本: ${data.formatVersion}")
@@ -99,7 +99,43 @@ class BackupService(private val db: AppDatabase) {
         for (s in data.settings) {
             if (s.key.isBlank()) return BackupValidationResult.Error("备份设置项缺失 key")
         }
+
+        // 销售漏斗校验: 每个日期的 成交 <= 查询 <= 见人
+        val funnelErrors = validateBackupFunnel(data.settings)
+        if (funnelErrors.isNotEmpty()) {
+            return BackupValidationResult.Error("备份数据违反销售漏斗约束:\n${funnelErrors.joinToString("\n")}")
+        }
+
         return BackupValidationResult.Success(data)
+    }
+
+    /** 遍历备份数据中的每日指标, 校验 0 <= 成交 <= 查询 <= 见人 */
+    private fun validateBackupFunnel(settings: List<BackupSetting>): List<String> {
+        val map = settings.associate { it.key to it.value }
+        val errors = mutableListOf<String>()
+
+        // 收集所有出现过的日期 key
+        val dateKeys = mutableSetOf<String>()
+        for (s in settings) {
+            when {
+                s.key.startsWith("people_seen_") -> dateKeys.add(s.key.removePrefix("people_seen_"))
+                s.key.startsWith("queries_") -> dateKeys.add(s.key.removePrefix("queries_"))
+                s.key.startsWith("deals_") -> dateKeys.add(s.key.removePrefix("deals_"))
+            }
+        }
+
+        for (dateKey in dateKeys) {
+            val meet = map["people_seen_$dateKey"]?.toIntOrNull() ?: 0
+            val query = map["queries_$dateKey"]?.toIntOrNull() ?: 0
+            val deal = map["deals_$dateKey"]?.toIntOrNull() ?: 0
+            if (query > meet) {
+                errors.add("$dateKey: 查询数($query) > 见人数($meet)")
+            }
+            if (deal > query) {
+                errors.add("$dateKey: 成交数($deal) > 查询数($query)")
+            }
+        }
+        return errors
     }
 
     private fun extractEntry(bytes: ByteArray, entryName: String): String? {

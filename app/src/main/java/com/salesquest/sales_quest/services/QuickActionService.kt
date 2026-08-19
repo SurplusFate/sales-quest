@@ -6,15 +6,18 @@ import com.salesquest.sales_quest.data.AppDatabase
 import com.salesquest.sales_quest.data.DateUtil
 
 /**
- * V1 快速操作服务
+ * V1.0.0 快速操作服务
  *
  * 核心流程:
- * 1. 更新数据 (见人/查询/成交)
- * 2. 如果当天首次产生数据 → 锁定任务配置
- * 3. 刷新任务进度, 发放单个任务 XP
- * 4. 检查全部基础任务是否完成 → 触发连续作战 +1 + 奖励 XP
- * 5. 如果成交不参与基础任务 → 发放成交额外 XP
- * 6. 检查成就解锁
+ * 1. 更新数据 (见人/查询/成交) + 校验销售漏斗 (成交 ≤ 查询 ≤ 见人)
+ * 2. 刷新任务进度, 发放单个任务 XP (防重复)
+ * 3. 检查全部基础任务是否完成 → 触发连续作战 +1 + 奖励 XP
+ * 4. 如果成交不参与基础任务 → 发放成交额外 XP
+ * 5. 检查成就解锁
+ *
+ * 变更 (P1):
+ * - 单指标更新时校验销售漏斗, 防止非法数据
+ * - 不再锁定任务配置, 允许当天修改目标 (防重复奖励仍由 XpService 保证)
  */
 class QuickActionService(
     private val db: AppDatabase,
@@ -24,50 +27,80 @@ class QuickActionService(
 ) {
 
     suspend fun setPeopleSeen(count: Int) {
+        validateFunnel(count, getTodayQueries(), getTodayDeals())
         xpService.setPeopleSeen(count)
         postUpdate()
     }
 
     suspend fun incrementQuery() {
+        val newCount = getTodayQueries() + 1
+        validateFunnel(getTodayPeople(), newCount, getTodayDeals())
         xpService.incrementQuery()
         postUpdate()
     }
 
     suspend fun setQuery(count: Int) {
+        validateFunnel(getTodayPeople(), count, getTodayDeals())
         xpService.setQuery(count)
         postUpdate()
     }
 
     suspend fun incrementDeal() {
+        val newCount = getTodayDeals() + 1
+        validateFunnel(getTodayPeople(), getTodayQueries(), newCount)
         xpService.incrementDeal()
         postUpdate()
     }
 
     suspend fun setDeal(count: Int) {
+        validateFunnel(getTodayPeople(), getTodayQueries(), count)
         xpService.setDeal(count)
         postUpdate()
+    }
+
+    /** 读取今日见人数 */
+    private suspend fun getTodayPeople(): Int =
+        db.settingDao().getInt(SettingsKeys.peopleSeen(DateUtil.dateKey()))
+
+    /** 读取今日查询数 */
+    private suspend fun getTodayQueries(): Int =
+        db.settingDao().getInt(SettingsKeys.queries(DateUtil.dateKey()))
+
+    /** 读取今日成交数 */
+    private suspend fun getTodayDeals(): Int =
+        db.settingDao().getInt(SettingsKeys.deals(DateUtil.dateKey()))
+
+    /**
+     * 销售漏斗校验: 0 <= 成交 <= 查询 <= 见人
+     * @throws IllegalArgumentException 校验失败时抛出, 消息为中文提示
+     */
+    private fun validateFunnel(peopleSeen: Int, queries: Int, deals: Int) {
+        if (peopleSeen < 0 || queries < 0 || deals < 0) {
+            throw IllegalArgumentException("数字不能为负数")
+        }
+        if (queries > peopleSeen) {
+            throw IllegalArgumentException("查询数不能大于见人数")
+        }
+        if (deals > queries) {
+            throw IllegalArgumentException("成交数不能大于查询数")
+        }
     }
 
     /** 数据更新后的统一处理流程 */
     private suspend fun postUpdate() {
         try {
-            // 1. 如果当天首次产生数据 → 锁定任务配置
-            if (taskService.hasTodayData()) {
-                taskService.lockTodayTasks()
-            }
-
-            // 2. 刷新任务进度, 发放单个任务 XP
+            // 1. 刷新任务进度, 发放单个任务 XP (XpService 保证防重复)
             val newlyCompleted = taskService.refreshTodayProgress()
             for (task in newlyCompleted) {
                 xpService.awardTaskXp(task.taskId, task.xpReward)
             }
 
-            // 3. 检查全部基础任务是否完成
+            // 2. 检查全部基础任务是否完成
             if (taskService.checkAllTasksCompleted()) {
                 xpService.onDailyTasksCompleted()
             }
 
-            // 4. 如果成交不参与基础任务 → 发放成交额外 XP
+            // 3. 如果成交不参与基础任务 → 发放成交额外 XP
             val config = taskService.getTodayConfig()
             if (!config.includeDeal) {
                 val dateKey = DateUtil.dateKey()
@@ -77,7 +110,7 @@ class QuickActionService(
                 }
             }
 
-            // 5. 检查成就解锁
+            // 4. 检查成就解锁
             achievementService.checkAndUnlock()
         } catch (e: Exception) {
             AppLogger.error("QuickActionService", "postUpdate 失败: $e", e.stackTraceToString())

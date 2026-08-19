@@ -14,8 +14,8 @@ android {
         applicationId = "com.salesquest.sales_quest"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.0"
     }
 
     buildTypes {
@@ -37,12 +37,27 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            all {
+                it.systemProperty("http.proxyHost", "127.0.0.1")
+                it.systemProperty("http.proxyPort", "18080")
+                it.systemProperty("https.proxyHost", "127.0.0.1")
+                it.systemProperty("https.proxyPort", "18080")
+            }
         }
+    }
+}
+
+// Compose UI 测试依赖 debug 变体的 manifest (debugImplementation), release 变体无法解析 launcher activity
+// 仅保留 debug 单元测试, release 单元测试禁用
+tasks.whenTaskAdded {
+    if (name == "testReleaseUnitTest") {
+        enabled = false
     }
 }
 

@@ -13,7 +13,7 @@ import com.salesquest.sales_quest.data.entity.XpRecordEntity
 import kotlinx.coroutines.flow.firstOrNull
 
 /**
- * V1.0 XP 服务
+ * V1.0.0 XP 服务
  *
  * 核心原则: XP 从销售实际行为产生, 不增加额外记录负担
  *

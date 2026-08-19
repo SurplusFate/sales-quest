@@ -1,7 +1,7 @@
 package com.salesquest.sales_quest.core
 
 /**
- * V1.0 应用常量: 等级、任务模板、成就定义
+ * V1.0.0 应用常量: 等级、任务模板、成就定义
  */
 
 /** 等级定义 */

@@ -17,7 +17,7 @@ data class AchievementStatus(
 )
 
 /**
- * V1.0 成就服务
+ * V1.0.0 成就服务
  * 基于 Settings 中的累计数据检查成就
  */
 class AchievementService(private val db: AppDatabase) {

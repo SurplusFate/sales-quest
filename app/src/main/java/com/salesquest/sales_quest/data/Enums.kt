@@ -1,7 +1,7 @@
 package com.salesquest.sales_quest.data
 
 /**
- * V1.0 核心指标 - 只有三个每日核心数据
+ * V1.0.0 核心指标 - 只有三个每日核心数据
  */
 enum class CoreMetric(val code: String, val label: String) {
     MEET("MEET", "见人"),

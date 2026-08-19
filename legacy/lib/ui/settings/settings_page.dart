@@ -6,8 +6,8 @@ import '../../providers/database_provider.dart';
 import '../../providers/stats_providers.dart';
 import '../../providers/task_providers.dart';
 
-/// 当前 APP 版本号
-const String appVersion = 'v0.2.2';
+/// 当前 APP 版本号 (legacy - 已迁移到 Android 原生, 此值仅作参考)
+const String appVersion = 'v1.0.0';
 
 /// 设置页 - V1.0 重构
 ///

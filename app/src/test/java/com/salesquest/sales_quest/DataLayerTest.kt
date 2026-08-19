@@ -15,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -340,21 +341,22 @@ class DataLayerTest {
     }
 
     @Test
-    fun 任务锁定后不可修改() = runTest {
+    fun 任务不再锁定_允许当天修改目标() = runTest {
         taskService.setDayConfig(
             System.currentTimeMillis(),
             DailyTaskConfig(meetTarget = 100)
         )
         taskService.lockTodayTasks()
 
-        assertThrows(IllegalStateException::class.java) {
-            kotlinx.coroutines.runBlocking {
-                taskService.setDayConfig(
-                    System.currentTimeMillis(),
-                    DailyTaskConfig(meetTarget = 1)
-                )
-            }
-        }
+        // P1: 任务不再锁定, 允许修改
+        assertEquals(false, taskService.isTodayLocked())
+
+        taskService.setDayConfig(
+            System.currentTimeMillis(),
+            DailyTaskConfig(meetTarget = 1)
+        )
+        val config = taskService.getTodayConfig()
+        assertEquals(1, config.meetTarget)
     }
 
     @Test
@@ -386,5 +388,51 @@ class DataLayerTest {
 
         val stats = db.statsDao().getStats()
         assertEquals(1, stats?.streakDays)
+    }
+
+    // ================================================================
+    // P1: 修改任务目标后防重复奖励测试
+    // 场景: 完成任务→获得XP→修改目标→再次达到完成条件→不得重复获得XP
+    // ================================================================
+
+    @Test
+    fun 修改任务目标后_不得重复获得任务完成XP() = runTest {
+        // 1. 设置初始任务: 查询目标 10
+        taskService.setDayConfig(
+            System.currentTimeMillis(),
+            DailyTaskConfig(meetTarget = 100, queryTarget = 10, includeMeet = true, includeQuery = true)
+        )
+
+        // 2. 完成查询任务 (达到 10)
+        xpService.setPeopleSeen(100)
+        xpService.setQuery(10)
+
+        // 3. 刷新进度, 发放 XP
+        val newlyCompleted = taskService.refreshTodayProgress()
+        for (task in newlyCompleted) {
+            xpService.awardTaskXp(task.taskId, task.xpReward)
+        }
+
+        // 记录当前 XP
+        val xpAfterFirstCompletion = db.statsDao().getStats()?.totalXp ?: 0
+        assertTrue("首次完成应获得 XP", xpAfterFirstCompletion > 0)
+
+        // 4. 修改查询目标为 5 (降低目标)
+        taskService.setDayConfig(
+            System.currentTimeMillis(),
+            DailyTaskConfig(meetTarget = 100, queryTarget = 5, includeMeet = true, includeQuery = true)
+        )
+
+        // 5. 再次刷新进度 (目标 5, 已完成 10 → 仍然完成)
+        val newlyCompleted2 = taskService.refreshTodayProgress()
+
+        // 6. 尝试再次发放 XP
+        for (task in newlyCompleted2) {
+            xpService.awardTaskXp(task.taskId, task.xpReward)
+        }
+
+        // 7. XP 不应增加 (防重复)
+        val xpAfterModification = db.statsDao().getStats()?.totalXp ?: 0
+        assertEquals("修改目标后不得重复获得 XP", xpAfterFirstCompletion, xpAfterModification)
     }
 }

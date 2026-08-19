@@ -202,7 +202,8 @@ fun QuickActionSheet(
 }
 
 /**
- * 数量数据输入校验
+ * 数量数据输入校验 (含销售漏斗约束)
+ * 规则: 0 <= 成交 <= 查询 <= 见人
  * @return null 表示合法, 否则返回错误提示文案
  */
 internal fun validateDailyEntry(meetText: String, queryText: String, dealText: String): String? {
@@ -212,6 +213,12 @@ internal fun validateDailyEntry(meetText: String, queryText: String, dealText: S
         val value = text.trim().toIntOrNull() ?: return "${label}只能输入非负整数"
         if (value < 0) return "${label}不能为负数"
     }
+    // 销售漏斗校验: 成交 <= 查询 <= 见人
+    val meet = meetText.trim().toInt()
+    val query = queryText.trim().toInt()
+    val deal = dealText.trim().toInt()
+    if (query > meet) return "查询数不能大于见人数"
+    if (deal > query) return "成交数不能大于查询数"
     return null
 }
 

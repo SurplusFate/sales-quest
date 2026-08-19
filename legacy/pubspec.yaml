@@ -1,7 +1,7 @@
 name: sales_quest
 description: "Sales Quest - 游戏化陌拜客户管理与销售执行系统"
 publish_to: 'none'
-version: 0.2.2+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.5.0

@@ -57,9 +57,14 @@ fun XpLevelPage(
     val totalXp by viewModel.totalXp.collectAsState()
     val progress by viewModel.progress.collectAsState()
 
-    val currentLevel = progress?.currentLevel ?: AppLevels.getLevel(totalXp)
-    val nextLevel = progress?.nextLevel ?: AppLevels.getNextLevel(totalXp)
-    val xpProgress = AppLevels.getProgress(totalXp)
+    // 唯一真实来源: LevelService 的判定结果 (不回退到纯 XP 判定)
+    val currentLevel = progress?.currentLevel ?: AppLevels.levels.first()
+    val nextLevel = progress?.nextLevel
+    val xpProgress = if (nextLevel != null) {
+        val range = (nextLevel.xpRequired - currentLevel.xpRequired).toDouble()
+        val done = (totalXp - currentLevel.xpRequired).toDouble()
+        if (range <= 0) 1.0 else (done / range).coerceIn(0.0, 1.0)
+    } else 1.0
 
     Scaffold(
         topBar = {
@@ -125,7 +130,7 @@ fun XpLevelPage(
                 LevelRow(
                     lv = lv,
                     currentLevel = currentLevel,
-                    totalXp = totalXp
+                    isReached = lv.level <= currentLevel.level
                 )
             }
         }
@@ -271,12 +276,11 @@ fun CurrentLevelCard(
     }
 }
 
-/** 单个等级条目 */
+/** 单个等级条目 - isReached 由 LevelService 判定 (非纯 XP) */
 @Composable
-fun LevelRow(lv: LevelDef, currentLevel: LevelDef, totalXp: Int) {
+fun LevelRow(lv: LevelDef, currentLevel: LevelDef, isReached: Boolean) {
     val theme = MaterialTheme.colorScheme
     val isCurrent = currentLevel.level == lv.level
-    val reached = totalXp >= lv.xpRequired
 
     Card(
         modifier = Modifier
@@ -297,9 +301,9 @@ fun LevelRow(lv: LevelDef, currentLevel: LevelDef, totalXp: Int) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                if (reached) Icons.Filled.EmojiEvents else Icons.Filled.Lock,
+                if (isReached) Icons.Filled.EmojiEvents else Icons.Filled.Lock,
                 contentDescription = null,
-                tint = if (reached) Color(0xFFFFC107) else theme.outline,
+                tint = if (isReached) Color(0xFFFFC107) else theme.outline,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(Modifier.width(12.dp))
@@ -308,7 +312,7 @@ fun LevelRow(lv: LevelDef, currentLevel: LevelDef, totalXp: Int) {
                     "Lv.${lv.level} ${lv.title}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                    color = if (reached) Color.Unspecified else theme.outline
+                    color = if (isReached) Color.Unspecified else theme.outline
                 )
                 Text(
                     "${lv.xpRequired} XP",
@@ -323,7 +327,7 @@ fun LevelRow(lv: LevelDef, currentLevel: LevelDef, totalXp: Int) {
                         label = { Text("当前") }
                     )
                 }
-                reached -> {
+                isReached -> {
                     Icon(
                         Icons.Filled.CheckCircle,
                         contentDescription = null,

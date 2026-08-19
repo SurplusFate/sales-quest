@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MilitaryTech
@@ -44,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.salesquest.sales_quest.BuildConfig
 import com.salesquest.sales_quest.core.AppLevels
 import com.salesquest.sales_quest.data.AppDatabase
 import kotlinx.coroutines.launch
@@ -56,7 +56,6 @@ fun SettingsPage(
     onOpenTaskConfig: () -> Unit = {},
     onOpenConfigFile: () -> Unit = {},
     onOpenWebDav: () -> Unit = {},
-    onOpenSummary: () -> Unit = {},
     onOpenLogs: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
@@ -105,14 +104,6 @@ fun SettingsPage(
             }
             item {
                 SettingsListItem(
-                    icon = Icons.Filled.EditNote,
-                    title = "总结",
-                    subtitle = "每日总结 / 周总结",
-                    onClick = onOpenSummary
-                )
-            }
-            item {
-                SettingsListItem(
                     icon = Icons.Filled.Today,
                     title = "清除今日数据",
                     subtitle = "清除今天的见人 / 查询 / 成交数据",
@@ -144,7 +135,7 @@ fun SettingsPage(
                 SettingsListItem(
                     icon = Icons.Filled.Info,
                     title = "当前版本",
-                    trailing = { Text("V1.0") }
+                    trailing = { Text("V${BuildConfig.VERSION_NAME}") }
                 )
             }
             item {

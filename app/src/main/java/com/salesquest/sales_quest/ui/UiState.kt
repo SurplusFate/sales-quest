@@ -2,8 +2,9 @@ package com.salesquest.sales_quest.ui
 
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
 import com.salesquest.sales_quest.services.DailyTaskConfig
+import com.salesquest.sales_quest.services.LevelProgress
 
-/** V1.0 作战数据 - 只有三个核心数字 */
+/** V1.0.0 作战数据 - 只有三个核心数字 */
 data class BattleStats(
     val peopleSeen: Int = 0,
     val queries: Int = 0,
@@ -33,5 +34,6 @@ data class HomeUiState(
     val totalXp: Int = 0,
     val streakDays: Int = 0,
     val weekStats: List<WeekDayStats> = emptyList(),
+    val levelProgress: LevelProgress? = null,
     val loading: Boolean = true
 )

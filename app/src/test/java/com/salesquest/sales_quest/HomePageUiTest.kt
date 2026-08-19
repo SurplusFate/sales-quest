@@ -51,11 +51,11 @@ class HomePageUiTest {
     }
 
     @Test
-    fun 首页应显示三个统计卡片和今日作战标题() {
+    fun 首页应显示三个统计卡片和今日战绩标题() {
         composeRule.setContent { HomePage() }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("今日作战 (点击数字修改)").assertIsDisplayed()
+        composeRule.onNodeWithText("今日战绩").assertIsDisplayed()
         // 见人/查询/成交 同时出现在统计卡片与本周战绩图例, 取首个
         composeRule.onAllNodesWithText("见人")[0].assertIsDisplayed()
         composeRule.onAllNodesWithText("查询")[0].assertIsDisplayed()

@@ -3,7 +3,9 @@ package com.salesquest.sales_quest.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.salesquest.sales_quest.core.AppContainer
+import com.salesquest.sales_quest.core.SettingsKeys
 import com.salesquest.sales_quest.data.DateUtil
+import com.salesquest.sales_quest.services.LevelService
 import com.salesquest.sales_quest.ui.BattleStats
 import com.salesquest.sales_quest.ui.HomeUiState
 import com.salesquest.sales_quest.ui.WeekDayStats
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel : ViewModel() {
 
     private val db = AppContainer.db
+    private val levelService = AppContainer.levelService
 
     private val todayDateKey = DateUtil.dateKey()
 
@@ -41,6 +44,22 @@ class HomeViewModel : ViewModel() {
 
     private val statsFlow = db.statsDao().watchStats()
 
+    /** 等级进度: 使用 LevelService 多条件判定 (非纯 XP) */
+    private val levelProgressFlow = combine(
+        statsFlow,
+        db.settingDao().watchAll()
+    ) { stats, settings ->
+        val map = settings.associate { it.key to it.value }
+        val totalXp = stats?.totalXp ?: 0
+        val totalMeet = map[SettingsKeys.TOTAL_MEETS]?.toIntOrNull() ?: 0
+        val totalQuery = map[SettingsKeys.TOTAL_QUERIES]?.toIntOrNull() ?: 0
+        val totalDeal = map[SettingsKeys.TOTAL_DEALS]?.toIntOrNull() ?: 0
+        val streakDays = stats?.streakDays ?: 0
+
+        val requirements = levelService.getRequirements()
+        LevelService.buildProgress(requirements, totalXp, totalMeet, totalQuery, totalDeal, streakDays)
+    }
+
     private val configFlow = MutableStateFlow<DailyTaskConfig?>(null)
 
     init {
@@ -49,20 +68,24 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    // Kotlin combine 只支持 5 个有类型重载; 6 个流需嵌套
+    private val statsTasksPair = combine(battleStatsFlow, tasksFlow) { stats, tasks -> stats to tasks }
+    private val statsConfigPair = combine(statsFlow, configFlow) { userStats, config -> userStats to config }
+    private val weekLevelPair = combine(weekStatsFlow, levelProgressFlow) { weekStats, levelProgress -> weekStats to levelProgress }
+
     val uiState: StateFlow<HomeUiState> = combine(
-        battleStatsFlow,
-        tasksFlow,
-        statsFlow,
-        configFlow,
-        weekStatsFlow
-    ) { stats, tasks, userStats, config, weekStats ->
+        statsTasksPair,
+        statsConfigPair,
+        weekLevelPair
+    ) { st, sc, wl ->
         HomeUiState(
-            stats = stats,
-            tasks = tasks,
-            config = config,
-            totalXp = userStats?.totalXp ?: 0,
-            streakDays = userStats?.streakDays ?: 0,
-            weekStats = weekStats,
+            stats = st.first,
+            tasks = st.second,
+            config = sc.second,
+            totalXp = sc.first?.totalXp ?: 0,
+            streakDays = sc.first?.streakDays ?: 0,
+            weekStats = wl.first,
+            levelProgress = wl.second,
             loading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())

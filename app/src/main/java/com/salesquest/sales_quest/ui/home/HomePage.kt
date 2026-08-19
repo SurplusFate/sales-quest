@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -64,11 +66,12 @@ import com.salesquest.sales_quest.services.DailyTaskConfig
 import com.salesquest.sales_quest.ui.HomeUiState
 import kotlinx.coroutines.launch
 
-/** 作战首页 - V1.0 核心 Dashboard */
+/** 作战首页 - 核心使用闭环: 今日战绩 + 记录数据 + 今日任务 */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(
     onNavigateToTaskConfig: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -84,32 +87,39 @@ fun HomePage(
                 .verticalScroll(rememberScrollState())
                 .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 100.dp)
         ) {
-            // === 等级卡片 ===
-            val level = AppLevels.getLevel(state.totalXp)
-            val nextLevel = AppLevels.getNextLevel(state.totalXp)
-            val progress = AppLevels.getProgress(state.totalXp)
+            // === 等级卡片 (使用 LevelService 判定) ===
+            val progress = state.levelProgress
+            val level = progress?.currentLevel ?: AppLevels.levels.first()
+            val nextLevel = progress?.nextLevel
+            val xpProgress = if (nextLevel != null) {
+                val range = (nextLevel.xpRequired - level.xpRequired).toDouble()
+                val done = (state.totalXp - level.xpRequired).toDouble()
+                if (range <= 0) 1.0 else (done / range).coerceIn(0.0, 1.0)
+            } else 1.0
             LevelCard(
                 level = level.level,
                 title = level.title,
                 totalXp = state.totalXp,
                 currentLevelXp = level.xpRequired,
                 nextLevelXp = nextLevel?.xpRequired ?: level.xpRequired,
-                progress = progress,
+                progress = xpProgress,
                 streakDays = state.streakDays
             )
             Spacer(Modifier.height(12.dp))
 
-            // === 今日作战 (可点击直接编辑) ===
+            // === 今日战绩 (仅展示, 点击编辑) ===
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "今日作战 (点击数字修改)",
+                    "今日战绩",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 TextButton(onClick = { showDailyEntry = true }) {
-                    Text("每日任务", style = MaterialTheme.typography.labelLarge)
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("记录数据", style = MaterialTheme.typography.labelLarge)
                 }
             }
             Spacer(Modifier.height(4.dp))
@@ -155,7 +165,7 @@ fun HomePage(
             }
             Spacer(Modifier.height(16.dp))
 
-            // === 今日任务 ===
+            // === 今日任务 (仅展示目标进度) ===
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "今日任务",
@@ -197,6 +207,18 @@ fun HomePage(
             // === 本周战绩 ===
             WeeklyBattleCard(weekStats = state.weekStats)
         }
+
+        // 设置入口浮动按钮 (右上角)
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 4.dp, end = 4.dp)
+        ) {
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Filled.Settings, contentDescription = "设置", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 
@@ -210,6 +232,8 @@ fun HomePage(
                         req.onSave(v)
                         editMetric = null
                         snackbarHostState.showSnackbar("已保存")
+                    } catch (e: IllegalArgumentException) {
+                        snackbarHostState.showSnackbar(e.message ?: "保存失败")
                     } catch (e: Exception) {
                         snackbarHostState.showSnackbar("保存失败: ${e.message}")
                     }

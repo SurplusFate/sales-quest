@@ -188,4 +188,80 @@ class LevelServiceTest {
         assertEquals(2, next.first().level)
         assertTrue(next.any { it.conditionType == LevelConditionType.XP })
     }
+
+    // ================================================================
+    // P0 等级判定: 每个条件单独不足时不晋级
+    // ================================================================
+
+    @Test
+    fun 测试一_XP达标_累计查询不足_不得晋级() {
+        // Lv3 需要 XP 300 + 见人 50 + 查询 10
+        // XP 500 达标, 见人 60 达标, 查询 9 < 10 → 不晋级
+        val level = LevelService.evaluateCurrentLevel(
+            AppLevels.defaultRequirements,
+            totalXp = 500, totalMeet = 60, totalQuery = 9, totalDeal = 0, streakDays = 0
+        )
+        assertEquals(2, level)
+    }
+
+    @Test
+    fun 测试二_XP达标_累计见人不足_不得晋级() {
+        // XP 500 达标, 见人 49 < 50 → 不晋级
+        val level = LevelService.evaluateCurrentLevel(
+            AppLevels.defaultRequirements,
+            totalXp = 500, totalMeet = 49, totalQuery = 10, totalDeal = 0, streakDays = 0
+        )
+        assertEquals(2, level)
+    }
+
+    @Test
+    fun 测试三_XP达标_累计成交不足_不得晋级() {
+        // Lv5 需要 XP 1200 + 累计查询 100 + 累计成交 5
+        // XP 1300 达标, 查询 100 达标, 成交 4 < 5 → 不晋级到 Lv5
+        val level = LevelService.evaluateCurrentLevel(
+            AppLevels.defaultRequirements,
+            totalXp = 1300, totalMeet = 200, totalQuery = 100, totalDeal = 4, streakDays = 30
+        )
+        assertEquals(4, level)
+    }
+
+    @Test
+    fun 测试四_所有条件全部满足_正常晋级() {
+        // Lv3 全部满足: XP 300 + 见人 50 + 查询 10
+        val level3 = LevelService.evaluateCurrentLevel(
+            AppLevels.defaultRequirements,
+            totalXp = 500, totalMeet = 50, totalQuery = 10, totalDeal = 0, streakDays = 0
+        )
+        assertEquals(3, level3)
+
+        // Lv5 全部满足: XP 1200 + 查询 100 + 成交 5
+        val level5 = LevelService.evaluateCurrentLevel(
+            AppLevels.defaultRequirements,
+            totalXp = 1300, totalMeet = 200, totalQuery = 100, totalDeal = 5, streakDays = 30
+        )
+        assertEquals(5, level5)
+    }
+
+    @Test
+    fun 测试五_LevelService判定与buildProgress显示状态一致() {
+        // 用相同数据同时验证 evaluateCurrentLevel 和 buildProgress
+        val reqs = AppLevels.defaultRequirements
+        val xp = 500
+        val meet = 60
+        val query = 9  // 查询不足
+        val deal = 0
+        val streak = 0
+
+        val evaluatedLevel = LevelService.evaluateCurrentLevel(reqs, xp, meet, query, deal, streak)
+        val progress = LevelService.buildProgress(reqs, xp, meet, query, deal, streak)
+
+        // evaluateCurrentLevel 和 buildProgress 必须返回相同的当前等级
+        assertEquals(evaluatedLevel, progress.currentLevel.level)
+
+        // 查询条件在进度中应显示为未达标
+        val queryReq = progress.requirements.firstOrNull { it.type == LevelConditionType.TOTAL_QUERY }
+        if (queryReq != null) {
+            assertFalse(queryReq.met)
+        }
+    }
 }

@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -175,7 +176,52 @@ class DailyEntryTest {
     fun 校验_0和正常整数合法() {
         assertNull(validateDailyEntry("0", "0", "0"))
         assertNull(validateDailyEntry("150", "23", "5"))
-        assertNull(validateDailyEntry("0", "23", "5"))
+    }
+
+    // ================================================================
+    // 销售漏斗校验 (成交 <= 查询 <= 见人)
+    // ================================================================
+
+    @Test
+    fun 漏斗校验_查询大于见人_被拒绝() {
+        val error = validateDailyEntry("20", "30", "5")
+        assertNotNull(error)
+        assertEquals("查询数不能大于见人数", error)
+    }
+
+    @Test
+    fun 漏斗校验_成交大于查询_被拒绝() {
+        val error = validateDailyEntry("20", "5", "8")
+        assertNotNull(error)
+        assertEquals("成交数不能大于查询数", error)
+    }
+
+    @Test
+    fun 漏斗校验_正常漏斗_合法() {
+        assertNull(validateDailyEntry("100", "20", "5"))
+        assertNull(validateDailyEntry("50", "50", "50"))
+        assertNull(validateDailyEntry("100", "0", "0"))
+    }
+
+    @Test
+    fun 漏斗校验_服务层拒绝查询大于见人() = runTest {
+        AppContainer.quickActionService.setPeopleSeen(20)
+        assertThrows(IllegalArgumentException::class.java) {
+            kotlinx.coroutines.runBlocking {
+                AppContainer.quickActionService.setQuery(30)
+            }
+        }
+    }
+
+    @Test
+    fun 漏斗校验_服务层拒绝成交大于查询() = runTest {
+        AppContainer.quickActionService.setPeopleSeen(20)
+        AppContainer.quickActionService.setQuery(5)
+        assertThrows(IllegalArgumentException::class.java) {
+            kotlinx.coroutines.runBlocking {
+                AppContainer.quickActionService.setDeal(8)
+            }
+        }
     }
 
     // ================================================================

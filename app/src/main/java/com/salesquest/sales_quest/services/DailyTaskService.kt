@@ -58,7 +58,7 @@ data class DailyTaskConfig(
 }
 
 /**
- * V1.0 每日任务服务
+ * V1.0.0 每日任务服务
  *
  * 核心变更:
  * 1. 任务目标由用户自定义, 不再硬编码
@@ -123,13 +123,9 @@ class DailyTaskService(private val db: AppDatabase) {
         )
     }
 
-    /** 设置某天的任务配置, 如果当天已锁定, 抛出异常 */
+    /** 设置某天的任务配置 (允许当天修改, 不再锁定) */
     suspend fun setDayConfig(time: Long, config: DailyTaskConfig) {
         val dateKey = DateUtil.dateKey(time)
-        val currentLocked = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "locked")) != 0
-        if (currentLocked) {
-            throw IllegalStateException("今日任务已锁定, 不可修改")
-        }
 
         db.settingDao().setInt(SettingsKeys.taskConfig(dateKey, "meet_target"), config.meetTarget)
         db.settingDao().setInt(SettingsKeys.taskConfig(dateKey, "query_target"), config.queryTarget)
@@ -142,7 +138,7 @@ class DailyTaskService(private val db: AppDatabase) {
         rebuildDayTasks(time, config)
     }
 
-    /** 锁定当天任务 (当产生数据时调用) */
+    /** 不再锁定任务 (P1 变更: 允许当天修改目标, 防重复奖励由 XpService 保证) */
     suspend fun lockTodayTasks() {
         val dateKey = DateUtil.dateKey()
         val hasConfig = db.settingDao().get(SettingsKeys.taskConfig(dateKey, "meet_target"))
@@ -155,14 +151,11 @@ class DailyTaskService(private val db: AppDatabase) {
             db.settingDao().setInt(SettingsKeys.taskConfig(dateKey, "include_query"), if (defaultConfig.includeQuery) 1 else 0)
             db.settingDao().setInt(SettingsKeys.taskConfig(dateKey, "include_deal"), if (defaultConfig.includeDeal) 1 else 0)
         }
-        db.settingDao().setInt(SettingsKeys.taskConfig(dateKey, "locked"), 1)
+        // 不再写入 locked=1
     }
 
-    /** 检查当天任务是否已锁定 */
-    suspend fun isTodayLocked(): Boolean {
-        val dateKey = DateUtil.dateKey()
-        return db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "locked")) != 0
-    }
+    /** 检查当天任务是否已锁定 (P1: 始终返回 false, 允许修改) */
+    suspend fun isTodayLocked(): Boolean = false
 
     /** 检查当天是否有数据产生 */
     suspend fun hasTodayData(): Boolean {
