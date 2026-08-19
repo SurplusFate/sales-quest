@@ -43,12 +43,6 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            all {
-                it.systemProperty("http.proxyHost", "127.0.0.1")
-                it.systemProperty("http.proxyPort", "18080")
-                it.systemProperty("https.proxyHost", "127.0.0.1")
-                it.systemProperty("https.proxyPort", "18080")
-            }
         }
     }
 }
