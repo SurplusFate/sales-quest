@@ -92,8 +92,12 @@ fun WebDavPage(
                 .padding(16.dp)
         ) {
             Text(
-                "备份内容: 数据库、每日/历史数据、客户、等级进度、总结等。\n" +
-                    "坚果云需在「应用密码」中生成应用密码后填写。",
+                "备份内容: 数据库、每日/历史数据、客户、等级进度、总结等。\n\n" +
+                    "坚果云配置步骤:\n" +
+                    "1. 登录 jianguoyun.com → 设置 → 安全选项\n" +
+                    "2. 「第三方应用管理」→ 添加应用, 名称任意\n" +
+                    "3. 复制生成的「应用密码」填入下方密码栏\n" +
+                    "4. 在坚果云根目录手动创建备份目录 (如 SalesQuest)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

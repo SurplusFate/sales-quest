@@ -9,6 +9,7 @@ import androidx.security.crypto.MasterKey
 import com.salesquest.sales_quest.core.BackupDefaults
 import com.salesquest.sales_quest.core.BackupKeys
 import okhttp3.Credentials
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -126,6 +127,9 @@ class WebDavService(
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
+        .followRedirects(true)          // 跟随 301/302 重定向 (坚果云会用)
+        .followSslRedirects(true)       // 跟随 HTTP→HTTPS 重定向
+        .retryOnConnectionFailure(true) // 网络抖动时自动重试
         .build()
 
     private val jsonMediaType = "application/xml; charset=utf-8".toMediaType()
@@ -133,8 +137,29 @@ class WebDavService(
 
     // ==================== 连接 ====================
 
-    /** 测试连接: PROPFIND 到配置目录 */
+    /**
+     * 测试连接: PROPFIND 到配置目录
+     *
+     * 坚果云注意事项:
+     * - URL 格式: https://dav.jianguoyun.com/dav/
+     * - 密码: 必须用坚果云「设置 → 安全选项 → 第三方应用管理」中的应用密码, 非登录密码
+     * - 目录: 需在坚果云网页端提前创建 (如 /SalesQuest)
+     */
     suspend fun testConnection(config: WebDavConfig): WebDavResult {
+        // 前置校验
+        if (!config.isConfigured()) {
+            return WebDavResult.Failure("请填写完整的 WebDAV 配置")
+        }
+
+        // URL 基础校验
+        val parsedUrl = config.url.toHttpUrlOrNull()
+        if (parsedUrl == null) {
+            return WebDavResult.Failure("WebDAV 地址格式错误, 应为 https://dav.jianguoyun.com/dav/")
+        }
+        if (!config.url.startsWith("https://")) {
+            return WebDavResult.Failure("坚果云要求 HTTPS, 请检查地址是否以 https:// 开头")
+        }
+
         return runCatching {
             val request = Request.Builder()
                 .url(joinUrl(config.url, config.dir))
@@ -151,14 +176,28 @@ class WebDavService(
             response.use { resp ->
                 when {
                     resp.code in 200..299 -> WebDavResult.Success("连接成功")
-                    resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
-                    resp.code == 404 -> WebDavResult.Failure("目录不存在 (坚果云需先手动创建目录)")
+                    resp.code == 401 -> WebDavResult.Failure("认证失败, 请确认使用的是坚果云「应用密码」而非登录密码")
+                    resp.code == 403 -> WebDavResult.Failure("拒绝访问, 请确认应用密码权限包含读写")
+                    resp.code == 404 -> WebDavResult.Failure("目录不存在, 请先在坚果云网页端创建目录 ${config.dir}")
+                    resp.code in 300..399 -> WebDavResult.Failure("重定向异常 (${resp.code}), 请检查 URL 是否完整")
                     else -> WebDavResult.Failure("连接失败: HTTP ${resp.code}")
                 }
             }
         }.getOrElse {
-            if (it is IOException) WebDavResult.Failure("网络错误: ${it.message}")
-            else WebDavResult.Failure("连接失败: ${it.message}")
+            when (it) {
+                is javax.net.ssl.SSLException ->
+                    WebDavResult.Failure("SSL/TLS 握手失败: ${it.message}")
+                is java.net.UnknownHostException ->
+                    WebDavResult.Failure("无法解析域名, 请检查网络连接和 URL 拼写")
+                is java.net.SocketTimeoutException ->
+                    WebDavResult.Failure("连接超时, 请检查网络或稍后重试")
+                is java.net.ConnectException ->
+                    WebDavResult.Failure("无法连接到服务器, 请检查网络")
+                is IOException ->
+                    WebDavResult.Failure("网络错误: ${it.message}")
+                else ->
+                    WebDavResult.Failure("连接异常: ${it.message}")
+            }
         }
     }
 
