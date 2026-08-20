@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Today
@@ -48,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.BuildConfig
-import com.salesquest.sales_quest.core.AppLevels
 import com.salesquest.sales_quest.data.AppDatabase
 import kotlinx.coroutines.launch
 
@@ -61,7 +59,6 @@ fun SettingsPage(
     onOpenConfigFile: () -> Unit = {},
     onOpenWebDav: () -> Unit = {},
     onOpenLogs: () -> Unit = {},
-    onOpenXpLevel: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
     val scope = rememberCoroutineScope()
@@ -164,14 +161,6 @@ fun SettingsPage(
                     icon = Icons.Filled.Backup,
                     title = "开发日志",
                     onClick = onOpenLogs
-                )
-            }
-            item {
-                SettingsListItem(
-                    icon = Icons.Filled.MilitaryTech,
-                    title = "等级系统",
-                    subtitle = "共 ${AppLevels.levels.size} 个等级, 含晋级条件",
-                    onClick = onOpenXpLevel
                 )
             }
         }
