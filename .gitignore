@@ -21,6 +21,7 @@ build/
 # Misc
 .DS_Store
 *.log
+.kotlin/
 
 # Legacy web build output
 legacy/app/
