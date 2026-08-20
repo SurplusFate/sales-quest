@@ -134,8 +134,8 @@ fun SalesQuestTheme(
     content: @Composable () -> Unit
 ) {
     val isDark = when (mode) {
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme() || theme == AppTheme.DARK_NEON
+        ThemeMode.LIGHT -> theme == AppTheme.DARK_NEON
         ThemeMode.DARK -> true
     }
 
