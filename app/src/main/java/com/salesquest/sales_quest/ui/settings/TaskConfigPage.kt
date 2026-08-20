@@ -1,7 +1,9 @@
 package com.salesquest.sales_quest.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,8 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,7 +37,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,7 +55,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -325,27 +328,11 @@ fun MetricConfigCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("目标", style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.width(12.dp))
-                    OutlinedTextField(
-                        value = if (target == 0) "" else target.toString(),
-                        onValueChange = { input ->
-                            val num = input.filter { it.isDigit() }.toIntOrNull()
-                            if (num != null && num in 0..9999) {
-                                onTargetChanged(num)
-                            } else if (input.isBlank()) {
-                                onTargetChanged(0)
-                            }
-                        },
-                        enabled = !locked,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier
-                            .width(100.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        textStyle = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = color,
-                            textAlign = TextAlign.Center
-                        )
+                    EditableTargetBox(
+                        target = target,
+                        color = color,
+                        locked = locked,
+                        onTargetChanged = onTargetChanged
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(unit, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -369,6 +356,88 @@ fun MetricConfigCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * 可编辑的目标值控件 — 视觉上保留原数字显示 Box 风格,
+ * 点击后可直接输入数字, 不使用标准表单输入框样式.
+ */
+@Composable
+private fun EditableTargetBox(
+    target: Int,
+    color: Color,
+    locked: Boolean,
+    onTargetChanged: (Int) -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    var text by remember { mutableStateOf(target.toString()) }
+
+    // 外部 target 变化时(配置加载 / 推荐目标), 同步显示文本
+    LaunchedEffect(target) {
+        if (!isFocused) {
+            text = target.toString()
+        }
+    }
+
+    // 失焦时校验并规范化输入
+    LaunchedEffect(isFocused) {
+        if (!isFocused) {
+            val num = text.toIntOrNull()
+            val validNum = num?.coerceIn(0, 9999) ?: 0
+            text = validNum.toString()
+            onTargetChanged(validNum)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .width(60.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(color.copy(alpha = 0.1f))
+            .then(
+                if (isFocused && !locked) {
+                    Modifier.border(1.dp, color, RoundedCornerShape(8.dp))
+                } else {
+                    Modifier
+                }
+            )
+            .padding(vertical = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        BasicTextField(
+            value = text,
+            onValueChange = { input ->
+                val filtered = input.filter { it.isDigit() }
+                if (filtered.length <= 4) {
+                    text = filtered
+                    val num = filtered.toIntOrNull()
+                    if (num != null && num in 0..9999) {
+                        onTargetChanged(num)
+                    }
+                }
+            },
+            enabled = !locked,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = color,
+                textAlign = TextAlign.Center
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            cursorBrush = SolidColor(color),
+            interactionSource = interactionSource,
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    innerTextField()
+                }
+            }
+        )
     }
 }
 

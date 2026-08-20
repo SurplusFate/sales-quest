@@ -86,6 +86,25 @@
 
 **验证: 132 项单元测试全部通过, 0 失败 0 错误**
 
+### v1.0.1 ~ v1.0.3 (2026-08-20) - 云备份与任务输入迭代
+
+- v1.0.1: 修复应用内版本号显示不一致; 修复坚果云 WebDAV 连接显示 null
+- v1.0.2: WebDAV 网络操作移至 IO 线程, 添加 INTERNET 权限
+- v1.0.3: 基础任务目标值从 +/- 按钮改为可直接输入数字
+
+### v1.0.4 (2026-08-20) - 基础任务目标输入 UI 优化
+
+**目标值控件视觉与交互优化**
+- 删除 `OutlinedTextField` 表单样式, 改用 `BasicTextField` + 原始 `Box` 视觉
+- 保留原数字显示块风格: 60dp 宽 / 8dp 圆角 / `color.copy(alpha=0.1f)` 背景 / `titleMedium` Bold
+- 点击数字区域进入编辑: 弹出数字键盘, 支持直接修改/删除/输入
+- 编辑状态: 1dp 细边框提示, 无 Material 表单边框
+- 输入限制: 仅数字, 0~9999 范围, 失焦自动校验
+- 0 值正常显示 `[ 0 ]`, 不再隐藏为空白
+- 任务锁定后数字区域不可编辑 (`enabled = !locked`)
+- 清理无用 import (`Arrangement`), 未使用 `TextSelectionColors` / `AddCircleOutline` / `RemoveCircleOutline`
+- 业务逻辑无改动: 数据结构 / ViewModel / 数据库 / 计算 / 保存 / 锁定逻辑均不变
+
 ### 历史版本 (Flutter → Android 原生迁移前)
 
 - v0.2.x: Flutter 版本 (已归档至 legacy/ 目录)
