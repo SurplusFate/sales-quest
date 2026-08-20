@@ -71,7 +71,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomePage(
     onNavigateToTaskConfig: () -> Unit = {},
-    onOpenSettings: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -206,17 +205,6 @@ fun HomePage(
 
             // === 本周战绩 ===
             WeeklyBattleCard(weekStats = state.weekStats)
-        }
-
-        // 设置入口浮动按钮 (右上角)
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 4.dp, end = 4.dp)
-        ) {
-            IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Filled.Settings, contentDescription = "设置", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
         }
 
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))

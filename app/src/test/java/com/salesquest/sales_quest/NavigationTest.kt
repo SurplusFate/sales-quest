@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
  * 底部导航测试 (v1.0.0 - 4 tab, 设置不在底部)
  *
  * 底部 tab: 作战 / 客户 / 数据 / 成就
- * 设置通过首页右上角图标进入
+ * 设置通过成就页右上角图标进入
  */
 @RunWith(RobolectricTestRunner::class)
 class NavigationTest {

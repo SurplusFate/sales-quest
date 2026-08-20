@@ -19,12 +19,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -50,6 +52,7 @@ import java.util.Locale
 @Composable
 fun AchievementPage(
     onOpenXpLevel: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     viewModel: AchievementViewModel = viewModel()
 ) {
     val statuses by viewModel.statuses.collectAsState()
@@ -58,6 +61,11 @@ fun AchievementPage(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("成就") },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "设置")
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
             )
         }

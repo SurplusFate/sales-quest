@@ -77,8 +77,7 @@ fun SalesQuestApp() {
             // 底部 4 tab
             composable("home") {
                 HomePage(
-                    onNavigateToTaskConfig = { navController.navigate("settings/task-config") },
-                    onOpenSettings = { navController.navigate("settings") }
+                    onNavigateToTaskConfig = { navController.navigate("settings/task-config") }
                 )
             }
             composable("customers") {
@@ -93,7 +92,10 @@ fun SalesQuestApp() {
                 )
             }
             composable("achievements") {
-                AchievementPage(onOpenXpLevel = { navController.navigate("xp") })
+                AchievementPage(
+                    onOpenXpLevel = { navController.navigate("xp") },
+                    onOpenSettings = { navController.navigate("settings") }
+                )
             }
 
             // 全屏路由
