@@ -190,7 +190,7 @@ fun LogViewerPage(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    items(filtered, key = { it.timestamp }) { entry ->
+                    items(filtered, key = { it.sequence }) { entry ->
                         LogCard(entry = entry)
                     }
                 }

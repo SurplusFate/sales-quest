@@ -16,8 +16,8 @@ android {
         applicationId = "com.salesquest.sales_quest"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.0.4"
+        versionCode = 7
+        versionName = "1.0.5"
     }
 
     // 读取签名配置: 优先从 keystore.properties 读取, 不存在则回退 debug 签名

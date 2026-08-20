@@ -105,6 +105,13 @@
 - 清理无用 import (`Arrangement`), 未使用 `TextSelectionColors` / `AddCircleOutline` / `RemoveCircleOutline`
 - 业务逻辑无改动: 数据结构 / ViewModel / 数据库 / 计算 / 保存 / 锁定逻辑均不变
 
+### v1.0.5 (2026-08-20) - 修复开发日志页闪退
+
+**Bug 修复**
+- 修复点击设置页"开发日志"后立即闪退的问题
+- 根因: `LogViewerPage` 的 `LazyColumn` 使用 `timestamp` 作为 key, App 启动时多条日志在同一毫秒产生, 导致 Compose key 重复崩溃
+- 修复: `LogEntry` 新增 `sequence: Long` 字段 (AtomicLong 自增), LazyColumn 改用 `it.sequence` 作为唯一 key
+
 ### 历史版本 (Flutter → Android 原生迁移前)
 
 - v0.2.x: Flutter 版本 (已归档至 legacy/ 目录)

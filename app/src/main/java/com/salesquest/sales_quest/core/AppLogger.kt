@@ -6,6 +6,7 @@ import java.util.Collections
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicLong
 
 /** 日志级别 */
 enum class LogLevel(val label: String) {
@@ -18,6 +19,7 @@ enum class LogLevel(val label: String) {
 
 /** 单条日志记录 */
 data class LogEntry(
+    val sequence: Long,
     val timestamp: Long,
     val level: LogLevel,
     val tag: String,
@@ -40,6 +42,7 @@ object AppLogger {
     private const val MAX_ENTRIES = 2000
     private val _entries = CopyOnWriteArrayList<LogEntry>()
     private val _listeners = CopyOnWriteArrayList<() -> Unit>()
+    private val _sequence = AtomicLong(0)
 
     val entries: List<LogEntry> get() = Collections.unmodifiableList(_entries)
 
@@ -60,6 +63,7 @@ object AppLogger {
 
     fun log(level: LogLevel, tag: String, message: String, stackTrace: String? = null, metadata: Map<String, String>? = null) {
         val entry = LogEntry(
+            sequence = _sequence.incrementAndGet(),
             timestamp = System.currentTimeMillis(),
             level = level,
             tag = tag,
