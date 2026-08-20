@@ -16,6 +16,8 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** WebDAV 配置 */
 data class WebDavConfig(
@@ -160,47 +162,51 @@ class WebDavService(
             return WebDavResult.Failure("坚果云要求 HTTPS, 请检查地址是否以 https:// 开头")
         }
 
-        return runCatching {
-            val request = Request.Builder()
-                .url(joinUrl(config.url, config.dir))
-                .method(
-                    "PROPFIND",
-                    ("<?xml version=\"1.0\"?>\n" +
-                        "<d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/></d:prop></d:propfind>")
-                        .toRequestBody(jsonMediaType)
-                )
-                .header("Authorization", Credentials.basic(config.username, config.password))
-                .header("Depth", "0")
-                .build()
-            val response = client.newCall(request).execute()
-            response.use { resp ->
-                when {
-                    resp.code in 200..299 -> WebDavResult.Success("连接成功")
-                    resp.code == 401 -> WebDavResult.Failure("认证失败, 请确认使用的是坚果云「应用密码」而非登录密码")
-                    resp.code == 403 -> WebDavResult.Failure("拒绝访问, 请确认应用密码权限包含读写")
-                    resp.code == 404 -> WebDavResult.Failure("目录不存在, 请先在坚果云网页端创建目录 ${config.dir}")
-                    resp.code == 405 -> WebDavResult.Failure("方法不允许 (405), 请检查 URL 是否指向 /dav/ 目录")
-                    resp.code in 300..399 -> WebDavResult.Failure("重定向异常 (${resp.code}), 请检查 URL 是否完整")
-                    else -> WebDavResult.Failure("连接失败: HTTP ${resp.code}")
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val request = Request.Builder()
+                    .url(joinUrl(config.url, config.dir))
+                    .method(
+                        "PROPFIND",
+                        ("<?xml version=\"1.0\"?>\n" +
+                            "<d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/></d:prop></d:propfind>")
+                            .toRequestBody(jsonMediaType)
+                    )
+                    .header("Authorization", Credentials.basic(config.username, config.password))
+                    .header("Depth", "0")
+                    .build()
+                val response = client.newCall(request).execute()
+                response.use { resp ->
+                    when {
+                        resp.code in 200..299 -> WebDavResult.Success("连接成功")
+                        resp.code == 401 -> WebDavResult.Failure("认证失败, 请确认使用的是坚果云「应用密码」而非登录密码")
+                        resp.code == 403 -> WebDavResult.Failure("拒绝访问, 请确认应用密码权限包含读写")
+                        resp.code == 404 -> WebDavResult.Failure("目录不存在, 请先在坚果云网页端创建目录 ${config.dir}")
+                        resp.code == 405 -> WebDavResult.Failure("方法不允许 (405), 请检查 URL 是否指向 /dav/ 目录")
+                        resp.code in 300..399 -> WebDavResult.Failure("重定向异常 (${resp.code}), 请检查 URL 是否完整")
+                        else -> WebDavResult.Failure("连接失败: HTTP ${resp.code}")
+                    }
                 }
-            }
-        }.getOrElse {
-            // 很多 Java 异常的 message 为 null, 不能直接插值, 否则用户看到 "null"
-            val errMsg = it.message ?: it.javaClass.simpleName
-            com.salesquest.sales_quest.core.AppLogger.error("WebDavService", "连接异常: ${it.javaClass.name}: $errMsg")
-            when (it) {
-                is javax.net.ssl.SSLException ->
-                    WebDavResult.Failure("SSL/TLS 握手失败: $errMsg\n可能原因: 证书不信任或网络被劫持")
-                is java.net.UnknownHostException ->
-                    WebDavResult.Failure("无法解析域名, 请检查网络连接和 URL 拼写")
-                is java.net.SocketTimeoutException ->
-                    WebDavResult.Failure("连接超时, 请检查网络或稍后重试")
-                is java.net.ConnectException ->
-                    WebDavResult.Failure("无法连接到服务器, 请检查网络")
-                is IOException ->
-                    WebDavResult.Failure("网络错误: $errMsg")
-                else ->
-                    WebDavResult.Failure("连接异常: ${it.javaClass.simpleName}: $errMsg")
+            }.getOrElse {
+                // 很多 Java 异常的 message 为 null, 不能直接插值, 否则用户看到 "null"
+                val errMsg = it.message ?: it.javaClass.simpleName
+                com.salesquest.sales_quest.core.AppLogger.error("WebDavService", "连接异常: ${it.javaClass.name}: $errMsg")
+                when (it) {
+                    is android.os.NetworkOnMainThreadException ->
+                        WebDavResult.Failure("网络操作不能在主线程执行")
+                    is javax.net.ssl.SSLException ->
+                        WebDavResult.Failure("SSL/TLS 握手失败: $errMsg\n可能原因: 证书不信任或网络被劫持")
+                    is java.net.UnknownHostException ->
+                        WebDavResult.Failure("无法解析域名, 请检查网络连接和 URL 拼写")
+                    is java.net.SocketTimeoutException ->
+                        WebDavResult.Failure("连接超时, 请检查网络或稍后重试")
+                    is java.net.ConnectException ->
+                        WebDavResult.Failure("无法连接到服务器, 请检查网络")
+                    is IOException ->
+                        WebDavResult.Failure("网络错误: $errMsg")
+                    else ->
+                        WebDavResult.Failure("连接异常: ${it.javaClass.simpleName}: $errMsg")
+                }
             }
         }
     }
@@ -211,22 +217,27 @@ class WebDavService(
         val test = testConnection(config)
         if (test is WebDavResult.Success) return test
 
-        val request = Request.Builder()
-            .url(dirUrl)
-            .method("MKCOL", null)
-            .header("Authorization", Credentials.basic(config.username, config.password))
-            .build()
-        return runCatching {
-            client.newCall(request).execute().use { resp ->
-                if (resp.code in 200..299 || resp.code == 405) {
-                    WebDavResult.Success()
-                } else if (resp.code == 401) {
-                    WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
-                } else {
-                    WebDavResult.Failure("创建目录失败: HTTP ${resp.code}")
+        return withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url(dirUrl)
+                .method("MKCOL", null)
+                .header("Authorization", Credentials.basic(config.username, config.password))
+                .build()
+            runCatching {
+                client.newCall(request).execute().use { resp ->
+                    if (resp.code in 200..299 || resp.code == 405) {
+                        WebDavResult.Success()
+                    } else if (resp.code == 401) {
+                        WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
+                    } else {
+                        WebDavResult.Failure("创建目录失败: HTTP ${resp.code}")
+                    }
                 }
+            }.getOrElse {
+                val errMsg = it.message ?: it.javaClass.simpleName
+                WebDavResult.Failure("网络错误: $errMsg")
             }
-        }.getOrElse { WebDavResult.Failure("网络错误: ${it.message}") }
+        }
     }
 
     // ==================== 备份 ====================
@@ -236,34 +247,40 @@ class WebDavService(
         if (!config.isConfigured()) return WebDavResult.Failure("请先完成账号配置")
         ensureDir(config)
 
-        val data = backupService.exportBackupData()
-        val dbBytes = backupService.readDatabaseFileBytes()
-        val zipBytes = backupService.createBackupZip(data, dbBytes)
+        return withContext(Dispatchers.IO) {
+            // 数据导出 + 文件读取 + 压缩 + 网络上传全部在 IO 线程
+            val data = backupService.exportBackupData()
+            val dbBytes = backupService.readDatabaseFileBytes()
+            val zipBytes = backupService.createBackupZip(data, dbBytes)
 
-        val filename = BackupKeys.BACKUP_FILENAME_PREFIX + java.text.SimpleDateFormat(
-            "yyyy-MM-dd_HHmmss", java.util.Locale.US
-        ).format(java.util.Date()) + BackupKeys.DB_BACKUP_SUFFIX + ".zip"
+            val filename = BackupKeys.BACKUP_FILENAME_PREFIX + java.text.SimpleDateFormat(
+                "yyyy-MM-dd_HHmmss", java.util.Locale.US
+            ).format(java.util.Date()) + BackupKeys.DB_BACKUP_SUFFIX + ".zip"
 
-        val request = Request.Builder()
-            .url(joinUrl(config.url, joinDir(config.dir, filename)))
-            .put(zipBytes.toRequestBody(octetMediaType))
-            .header("Authorization", Credentials.basic(config.username, config.password))
-            .build()
+            val request = Request.Builder()
+                .url(joinUrl(config.url, joinDir(config.dir, filename)))
+                .put(zipBytes.toRequestBody(octetMediaType))
+                .header("Authorization", Credentials.basic(config.username, config.password))
+                .build()
 
-        return runCatching {
-            client.newCall(request).execute().use { resp ->
-                when {
-                    resp.code in 200..299 -> {
-                        configStore.setLastBackupAt(System.currentTimeMillis())
-                        configStore.save(config)
-                        WebDavResult.Success("备份成功: $filename")
+            runCatching {
+                client.newCall(request).execute().use { resp ->
+                    when {
+                        resp.code in 200..299 -> {
+                            configStore.setLastBackupAt(System.currentTimeMillis())
+                            configStore.save(config)
+                            WebDavResult.Success("备份成功: $filename")
+                        }
+                        resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
+                        resp.code == 409 -> WebDavResult.Failure("远程目录不存在, 请先手动创建")
+                        else -> WebDavResult.Failure("备份失败: HTTP ${resp.code}")
                     }
-                    resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
-                    resp.code == 409 -> WebDavResult.Failure("远程目录不存在, 请先手动创建")
-                    else -> WebDavResult.Failure("备份失败: HTTP ${resp.code}")
                 }
+            }.getOrElse {
+                val errMsg = it.message ?: it.javaClass.simpleName
+                WebDavResult.Failure("网络错误: $errMsg")
             }
-        }.getOrElse { WebDavResult.Failure("网络错误: ${it.message}") }
+        }
     }
 
     // ==================== 列表 ====================
@@ -277,26 +294,30 @@ class WebDavService(
             "<d:prop><d:displayname/><d:getcontentlength/><d:getlastmodified/></d:prop>" +
             "</d:propfind>")
 
-        val request = Request.Builder()
-            .url(joinUrl(config.url, config.dir))
-            .method("PROPFIND", propfind.toRequestBody(jsonMediaType))
-            .header("Authorization", Credentials.basic(config.username, config.password))
-            .header("Depth", "1")
-            .build()
-
-        return runCatching {
-            client.newCall(request).execute().use { resp ->
-                when {
-                    resp.code in 200..299 -> {
-                        val body = resp.body?.string() ?: ""
-                        WebDavResult.Success(parsePropfind(body))
+        return withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url(joinUrl(config.url, config.dir))
+                .method("PROPFIND", propfind.toRequestBody(jsonMediaType))
+                .header("Authorization", Credentials.basic(config.username, config.password))
+                .header("Depth", "1")
+                .build()
+            runCatching {
+                client.newCall(request).execute().use { resp ->
+                    when {
+                        resp.code in 200..299 -> {
+                            val body = resp.body?.string() ?: ""
+                            WebDavResult.Success(parsePropfind(body))
+                        }
+                        resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
+                        resp.code == 404 -> WebDavResult.Failure("目录不存在")
+                        else -> WebDavResult.Failure("获取列表失败: HTTP ${resp.code}")
                     }
-                    resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
-                    resp.code == 404 -> WebDavResult.Failure("目录不存在")
-                    else -> WebDavResult.Failure("获取列表失败: HTTP ${resp.code}")
                 }
+            }.getOrElse {
+                val errMsg = it.message ?: it.javaClass.simpleName
+                WebDavResult.Failure("网络错误: $errMsg")
             }
-        }.getOrElse { WebDavResult.Failure("网络错误: ${it.message}") }
+        }
     }
 
     /** 从 PROPFIND XML 响应解析备份文件名 */
@@ -322,31 +343,35 @@ class WebDavService(
     suspend fun restoreBackup(filename: String, config: WebDavConfig = configStore.load()): WebDavResult {
         if (!config.isConfigured()) return WebDavResult.Failure("请先完成账号配置")
 
-        val request = Request.Builder()
-            .url(joinUrl(config.url, joinDir(config.dir, filename)))
-            .get()
-            .header("Authorization", Credentials.basic(config.username, config.password))
-            .build()
-
-        return runCatching {
-            client.newCall(request).execute().use { resp ->
-                when {
-                    resp.code in 200..299 -> {
-                        val bytes = resp.body?.bytes() ?: return@use WebDavResult.Failure("下载内容为空")
-                        when (val parsed = backupService.parseBackupZip(bytes)) {
-                            is BackupValidationResult.Success -> {
-                                backupService.restoreBackupData(parsed.data)
-                                WebDavResult.Success("恢复成功")
+        return withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url(joinUrl(config.url, joinDir(config.dir, filename)))
+                .get()
+                .header("Authorization", Credentials.basic(config.username, config.password))
+                .build()
+            runCatching {
+                client.newCall(request).execute().use { resp ->
+                    when {
+                        resp.code in 200..299 -> {
+                            val bytes = resp.body?.bytes() ?: return@use WebDavResult.Failure("下载内容为空")
+                            when (val parsed = backupService.parseBackupZip(bytes)) {
+                                is BackupValidationResult.Success -> {
+                                    backupService.restoreBackupData(parsed.data)
+                                    WebDavResult.Success("恢复成功")
+                                }
+                                is BackupValidationResult.Error -> WebDavResult.Failure(parsed.message)
                             }
-                            is BackupValidationResult.Error -> WebDavResult.Failure(parsed.message)
                         }
+                        resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
+                        resp.code == 404 -> WebDavResult.Failure("备份文件不存在")
+                        else -> WebDavResult.Failure("下载失败: HTTP ${resp.code}")
                     }
-                    resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
-                    resp.code == 404 -> WebDavResult.Failure("备份文件不存在")
-                    else -> WebDavResult.Failure("下载失败: HTTP ${resp.code}")
                 }
+            }.getOrElse {
+                val errMsg = it.message ?: it.javaClass.simpleName
+                WebDavResult.Failure("网络错误: $errMsg")
             }
-        }.getOrElse { WebDavResult.Failure("网络错误: ${it.message}") }
+        }
     }
 
     // ==================== 自动备份 ====================
