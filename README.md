@@ -134,6 +134,20 @@
 - 将应用版本和数据库版本整合到"关于 Sales Quest"对话框中, 一行展示
 - 清理无用 import (`Info`, `Storage`)
 
+### v1.0.9 (2026-08-20) - 主题系统: 三套配色 + 夜间模式
+
+**新功能: 主题设置**
+- 设置页新增"主题设置"入口
+- 三套配色方案:
+  - **深蓝 + 琥珀**: 主色 #1565C0, 强调 #FFB300 (专业可靠 + 游戏化亮点)
+  - **暗黑 + 霓虹**: 主色 #00E676, 强调 #6C5CE7 (沉浸游戏感, 夜间友好)
+  - **青绿 + 珊瑚**: 主色 #00897B, 强调 #FF7043 (清新现代)
+- 显示模式: 跟随系统 / 浅色 / 夜间模式 (使用暗黑配色)
+- 主题选择通过 SharedPreferences 持久化, 切换后即时生效
+- `ThemeManager`: StateFlow 驱动, App 启动时初始化
+- `SalesQuestTheme`: 根据 ThemeManager 的 mode + theme 动态选择 ColorScheme
+- 每个主题都有完整的 light + dark 配色 (6 套 ColorScheme)
+
 ### 历史版本 (Flutter → Android 原生迁移前)
 
 - v0.2.x: Flutter 版本 (已归档至 legacy/ 目录)

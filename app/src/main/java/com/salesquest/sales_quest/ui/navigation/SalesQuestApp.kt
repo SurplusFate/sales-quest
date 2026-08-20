@@ -27,6 +27,7 @@ import com.salesquest.sales_quest.ui.home.HomePage
 import com.salesquest.sales_quest.ui.settings.ConfigPage
 import com.salesquest.sales_quest.ui.settings.SettingsPage
 import com.salesquest.sales_quest.ui.settings.TaskConfigPage
+import com.salesquest.sales_quest.ui.settings.ThemeSettingsPage
 import com.salesquest.sales_quest.ui.settings.WebDavPage
 import com.salesquest.sales_quest.ui.summary.SummaryPage
 
@@ -127,7 +128,8 @@ fun SalesQuestApp() {
                     onOpenTaskConfig = { navController.navigate("settings/task-config") },
                     onOpenConfigFile = { navController.navigate("settings/config") },
                     onOpenWebDav = { navController.navigate("settings/webdav") },
-                    onOpenLogs = { navController.navigate("dev/logs") }
+                    onOpenLogs = { navController.navigate("dev/logs") },
+                    onOpenThemeSettings = { navController.navigate("settings/theme") }
                 )
             }
             composable("settings/task-config") {
@@ -138,6 +140,9 @@ fun SalesQuestApp() {
             }
             composable("settings/webdav") {
                 WebDavPage(onBack = { navController.popBackStack() })
+            }
+            composable("settings/theme") {
+                ThemeSettingsPage(onBack = { navController.popBackStack() })
             }
             composable("summary") {
                 SummaryPage(onBack = { navController.popBackStack() })

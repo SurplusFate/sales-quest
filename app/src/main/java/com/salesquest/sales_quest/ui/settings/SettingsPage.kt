@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
@@ -57,6 +58,7 @@ fun SettingsPage(
     onOpenConfigFile: () -> Unit = {},
     onOpenWebDav: () -> Unit = {},
     onOpenLogs: () -> Unit = {},
+    onOpenThemeSettings: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
     val scope = rememberCoroutineScope()
@@ -132,6 +134,14 @@ fun SettingsPage(
             }
 
             item { SettingsGroup("应用") }
+            item {
+                SettingsListItem(
+                    icon = Icons.Filled.Palette,
+                    title = "主题设置",
+                    subtitle = "配色方案 / 夜间模式",
+                    onClick = onOpenThemeSettings
+                )
+            }
             item {
                 SettingsListItem(
                     icon = Icons.Filled.SportsEsports,

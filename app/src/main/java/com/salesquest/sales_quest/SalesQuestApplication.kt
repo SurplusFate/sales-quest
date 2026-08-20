@@ -3,6 +3,7 @@ package com.salesquest.sales_quest
 import android.app.Application
 import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.core.AppLogger
+import com.salesquest.sales_quest.ui.theme.ThemeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,6 +17,7 @@ class SalesQuestApplication : Application() {
         super.onCreate()
         AppLogger.info("App", "=== Sales Quest 启动 ===")
         AppContainer.init(this)
+        ThemeManager.init(this)
         AppLogger.info("App", "数据库初始化完成")
 
         // 启动时确保今日任务已创建 (异步执行, 不阻塞 UI)
