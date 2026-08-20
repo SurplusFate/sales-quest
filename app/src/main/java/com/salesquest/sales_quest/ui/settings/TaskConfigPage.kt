@@ -14,16 +14,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Recommend
-import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -55,6 +56,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.core.DefaultTaskConfig
@@ -321,35 +324,29 @@ fun MetricConfigCard(
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("目标", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.weight(1f))
-                    IconButton(
+                    Spacer(Modifier.width(12.dp))
+                    OutlinedTextField(
+                        value = if (target == 0) "" else target.toString(),
+                        onValueChange = { input ->
+                            val num = input.filter { it.isDigit() }.toIntOrNull()
+                            if (num != null && num in 0..9999) {
+                                onTargetChanged(num)
+                            } else if (input.isBlank()) {
+                                onTargetChanged(0)
+                            }
+                        },
                         enabled = !locked,
-                        onClick = { onTargetChanged(if (target > 1) target - 1 else 1) }
-                    ) {
-                        Icon(Icons.Filled.RemoveCircleOutline, contentDescription = "减少", tint = color)
-                    }
-                    Box(
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier
-                            .width(60.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(color.copy(alpha = 0.1f))
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Text(
-                            "$target",
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            style = MaterialTheme.typography.titleMedium,
+                            .width(100.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        textStyle = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = color,
-                            modifier = Modifier.fillMaxWidth()
+                            textAlign = TextAlign.Center
                         )
-                    }
-                    IconButton(
-                        enabled = !locked,
-                        onClick = { onTargetChanged(target + 1) }
-                    ) {
-                        Icon(Icons.Filled.AddCircleOutline, contentDescription = "增加", tint = color)
-                    }
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text(unit, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
