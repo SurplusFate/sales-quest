@@ -66,19 +66,23 @@ fun ConfigPage(
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
+        if (uri == null) {
+            viewModel.consumeJson()
+            return@rememberLauncherForActivityResult
+        }
         val json = viewModel.configJson.value
         if (json == null) {
-            viewModel.export()
             scope.launch { snackbarHostState.showSnackbar("请稍后重试导出") }
-        } else {
-            scope.launch {
-                try {
-                    context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
-                    snackbarHostState.showSnackbar("配置已导出")
-                } catch (e: Exception) {
-                    snackbarHostState.showSnackbar("导出失败: ${e.message}")
-                }
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+                snackbarHostState.showSnackbar("配置已导出")
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar("导出失败: ${e.message}")
+            } finally {
+                viewModel.consumeJson()
             }
         }
     }
@@ -138,11 +142,7 @@ fun ConfigPage(
             Spacer(Modifier.height(20.dp))
 
             Button(
-                onClick = {
-                    viewModel.export()
-                    // 等待 json 生成后启动系统选择器
-                    // 使用 LaunchedEffect 监听 configJson
-                },
+                onClick = { viewModel.export() },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !exporting
             ) {
@@ -175,11 +175,12 @@ fun ConfigPage(
     }
 
     // 导出 json 就绪后启动系统文件选择器
+    // 注意: 不在此处 consumeJson(), 待用户选择保存位置后回调中再消费,
+    // 否则文件选择器回调时 configJson 已被清空, 导致导出失败
     LaunchedEffect(configJson) {
         val json = configJson ?: return@LaunchedEffect
         if (json.isNotBlank()) {
             exportLauncher.launch("sales_quest_config.json")
-            viewModel.consumeJson()
         }
     }
 }
