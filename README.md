@@ -112,6 +112,14 @@
 - 根因: `LogViewerPage` 的 `LazyColumn` 使用 `timestamp` 作为 key, App 启动时多条日志在同一毫秒产生, 导致 Compose key 重复崩溃
 - 修复: `LogEntry` 新增 `sequence: Long` 字段 (AtomicLong 自增), LazyColumn 改用 `it.sequence` 作为唯一 key
 
+### v1.0.6 (2026-08-20) - 修复设置页"关于"和"等级系统"无法点击
+
+**Bug 修复**
+- 修复设置页"关于 Sales Quest"条目点击无反应的问题 — 原因: 未传 `onClick`
+- 修复设置页"等级系统"条目点击无反应的问题 — 原因: 未传 `onClick`, 未连接路由
+- "关于"改为弹出对话框, 展示应用名 / 版本号 / 简介
+- "等级系统"连接到已有的 `"xp"` 路由, 跳转 `XpLevelPage`
+
 ### 历史版本 (Flutter → Android 原生迁移前)
 
 - v0.2.x: Flutter 版本 (已归档至 legacy/ 目录)

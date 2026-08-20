@@ -1,8 +1,11 @@
 package com.salesquest.sales_quest.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -41,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.BuildConfig
@@ -57,12 +61,14 @@ fun SettingsPage(
     onOpenConfigFile: () -> Unit = {},
     onOpenWebDav: () -> Unit = {},
     onOpenLogs: () -> Unit = {},
+    onOpenXpLevel: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var showClearTodayDialog by remember { mutableStateOf(false) }
     var showClearAllDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -149,7 +155,8 @@ fun SettingsPage(
                 SettingsListItem(
                     icon = Icons.Filled.SportsEsports,
                     title = "关于 Sales Quest",
-                    subtitle = "游戏化销售作战系统"
+                    subtitle = "游戏化销售作战系统",
+                    onClick = { showAboutDialog = true }
                 )
             }
             item {
@@ -163,7 +170,8 @@ fun SettingsPage(
                 SettingsListItem(
                     icon = Icons.Filled.MilitaryTech,
                     title = "等级系统",
-                    subtitle = "共 ${AppLevels.levels.size} 个等级, 含晋级条件"
+                    subtitle = "共 ${AppLevels.levels.size} 个等级, 含晋级条件",
+                    onClick = onOpenXpLevel
                 )
             }
         }
@@ -217,6 +225,31 @@ fun SettingsPage(
             },
             dismissButton = {
                 TextButton(onClick = { showClearAllDialog = false }) { Text("取消") }
+            }
+        )
+    }
+
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            title = { Text("关于 Sales Quest") },
+            text = {
+                Column {
+                    Text("Sales Quest", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("版本 ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(12.dp))
+                    Text("游戏化销售作战系统", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "将每日销售目标游戏化, 完成见人 / 查询 / 成交任务获得 XP, 提升等级, 追踪连续作战天数。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutDialog = false }) { Text("关闭") }
             }
         )
     }

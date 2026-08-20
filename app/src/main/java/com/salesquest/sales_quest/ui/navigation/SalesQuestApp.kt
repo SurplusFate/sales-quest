@@ -127,7 +127,8 @@ fun SalesQuestApp() {
                     onOpenTaskConfig = { navController.navigate("settings/task-config") },
                     onOpenConfigFile = { navController.navigate("settings/config") },
                     onOpenWebDav = { navController.navigate("settings/webdav") },
-                    onOpenLogs = { navController.navigate("dev/logs") }
+                    onOpenLogs = { navController.navigate("dev/logs") },
+                    onOpenXpLevel = { navController.navigate("xp") }
                 )
             }
             composable("settings/task-config") {
