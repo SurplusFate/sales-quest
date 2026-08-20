@@ -19,8 +19,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val mode by ThemeManager.mode.collectAsState()
             val theme by ThemeManager.theme.collectAsState()
-            // 读取 mode/theme 触发重组, SalesQuestTheme 内部根据最新值选择配色
-            SalesQuestTheme {
+            SalesQuestTheme(
+                mode = mode,
+                theme = theme
+            ) {
                 SalesQuestApp()
             }
         }

@@ -148,6 +148,13 @@
 - `SalesQuestTheme`: 根据 ThemeManager 的 mode + theme 动态选择 ColorScheme
 - 每个主题都有完整的 light + dark 配色 (6 套 ColorScheme)
 
+### v1.0.10 (2026-08-20) - 修复主题切换无反应
+
+**Bug 修复**
+- 根因: `SalesQuestTheme` 内部用 `ThemeManager.mode.value` 直接读 StateFlow 当前值, 不触发 Compose 重组
+- 修复: `mode` 和 `theme` 改为 `SalesQuestTheme` 的参数, `MainActivity` 用 `collectAsState()` 收集后传入
+- 切换主题/夜间模式后即时生效, 无需重启
+
 ### 历史版本 (Flutter → Android 原生迁移前)
 
 - v0.2.x: Flutter 版本 (已归档至 legacy/ 目录)

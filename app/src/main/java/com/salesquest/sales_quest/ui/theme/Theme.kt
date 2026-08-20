@@ -129,11 +129,10 @@ private val AppShapes = Shapes(
 
 @Composable
 fun SalesQuestTheme(
+    mode: ThemeMode = ThemeManager.mode.value,
+    theme: AppTheme = ThemeManager.theme.value,
     content: @Composable () -> Unit
 ) {
-    val mode = ThemeManager.mode.value
-    val theme = ThemeManager.theme.value
-
     val isDark = when (mode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
