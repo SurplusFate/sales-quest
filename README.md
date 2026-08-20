@@ -65,6 +65,27 @@
 - 全项目清理 Flutter 时代 V1.0 / 0.2.x 版本号
 - 代码注释统一更新
 
+### v1.0.0-perf (2026-08-20) - 性能专项优化
+
+**P0: 首页 Compose 重组优化**
+- HomeViewModel: 共享单一 settingsFlow 订阅, watchAll() 从 3 次降为 1 次
+- HomePage: 拆分为 LevelSection / BattleStatsSection / TaskSection / WeeklyBattleCard 独立子 Composable
+- 修改见人数等数据时, 仅对应区域重组, 不再全页重组
+
+**P0: 趋势图 Canvas 绘制优化**
+- WeeklyBattleCard: 使用 remember 缓存 TextLayoutResult
+- Canvas draw 阶段不再调用 textMeasurer.measure(), 仅数据变化时重新测量
+
+**P1: 客户列表过滤优化**
+- CustomerListViewModel: filter 逻辑从 Composable 层移至 ViewModel StateFlow 链
+- 重组时直接读取已过滤列表, 不再每次创建新 List
+
+**P1: 总结页文本输入优化**
+- SummaryPage: 提取 HistorySection 为独立 Composable
+- OutlinedTextField 输入时, 历史列表区域不再跟随重组
+
+**验证: 132 项单元测试全部通过, 0 失败 0 错误**
+
 ### 历史版本 (Flutter → Android 原生迁移前)
 
 - v0.2.x: Flutter 版本 (已归档至 legacy/ 目录)

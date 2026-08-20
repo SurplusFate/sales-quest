@@ -69,11 +69,7 @@ fun CustomerListPage(
             )
         }
     ) { innerPadding ->
-        val worthFollowing = customers.filter {
-            CustomerStage.fromCode(it.salesStage) != CustomerStage.WON
-        }
-
-        if (worthFollowing.isEmpty()) {
+        if (customers.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -98,7 +94,7 @@ fun CustomerListPage(
                     .padding(innerPadding),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                items(worthFollowing, key = { it.id }) { customer ->
+                items(customers, key = { it.id }) { customer ->
                     CustomerTile(customer = customer, onClick = { onOpenCustomer(customer.id) })
                 }
             }

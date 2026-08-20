@@ -152,6 +152,22 @@ private fun WeekLineChart(
 
     val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
 
+    // 性能优化: 预测量 x 轴标签, 避免在 Canvas draw 阶段重复调用 textMeasurer.measure()
+    val dayLabelLayouts = remember(values, dayLabelStyle) {
+        values.map { day ->
+            val text = "${day.weekday} ${day.dateLabel}"
+            textMeasurer.measure(text, dayLabelStyle)
+        }
+    }
+    // 预测量 y 轴标签
+    val gridLines = 4
+    val axisLabelLayouts = remember(maxValue, gridLines, axisLabelStyle) {
+        (0..gridLines).map { i ->
+            val labelValue = maxValue * (gridLines - i) / gridLines
+            textMeasurer.measure(labelValue.toString(), axisLabelStyle)
+        }
+    }
+
     val chartModifier = modifier.pointerInput(values) {
         detectTapGestures { offset ->
             val leftPad = 28.dp.toPx()
@@ -184,22 +200,19 @@ private fun WeekLineChart(
         fun xFor(index: Int): Float = leftPad + xStep * index
         fun yFor(v: Int): Float = topPad + plotHeight - (v.toFloat() / maxValue) * plotHeight
 
-        // 横向网格线 + y 轴刻度
-        val gridLines = 4
+        // 横向网格线 + y 轴刻度 (使用预算好的 TextLayout)
         for (i in 0..gridLines) {
             val y = topPad + plotHeight * i / gridLines
-            val labelValue = maxValue * (gridLines - i) / gridLines
             drawLine(
                 color = gridColor,
                 start = Offset(leftPad, y),
                 end = Offset(leftPad + plotWidth, y),
                 strokeWidth = 1f
             )
+            val textLayoutResult = axisLabelLayouts[i]
             drawText(
-                textMeasurer = textMeasurer,
-                text = labelValue.toString(),
-                topLeft = Offset(0f, y - 6f),
-                style = axisLabelStyle
+                textLayoutResult = textLayoutResult,
+                topLeft = Offset(0f, y - 6f)
             )
         }
 
@@ -223,21 +236,18 @@ private fun WeekLineChart(
         drawSeries({ it.stats.queries }, QueryColor)
         drawSeries({ it.stats.deals }, DealColor)
 
-        // x 轴底部标签: 周几 + 日期
+        // x 轴底部标签: 周几 + 日期 (使用预算好的 TextLayout)
         val dayWidth = plotWidth / pointCount
         clipRect(right = chartWidth) {
-            values.forEachIndexed { index, day ->
+            values.forEachIndexed { index, _ ->
                 val cx = xFor(index)
-                val text = "${day.weekday} ${day.dateLabel}"
-                val layout = textMeasurer.measure(text, dayLabelStyle)
-                val textWidth = layout.size.width.toFloat()
+                val textLayoutResult = dayLabelLayouts[index]
+                val textWidth = textLayoutResult.size.width.toFloat()
                 val textLeft = (cx - textWidth / 2f)
                     .coerceIn(leftPad, chartWidth - rightPad - textWidth)
                 drawText(
-                    textMeasurer = textMeasurer,
-                    text = text,
-                    topLeft = Offset(textLeft, chartHeight - bottomPad + 2f),
-                    style = dayLabelStyle
+                    textLayoutResult = textLayoutResult,
+                    topLeft = Offset(textLeft, chartHeight - bottomPad + 2f)
                 )
             }
         }

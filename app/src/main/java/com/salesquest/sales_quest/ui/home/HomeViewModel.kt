@@ -18,7 +18,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** 首页 ViewModel - 组合今日作战数据/任务/等级/连续作战 */
+/**
+ * 首页 ViewModel - 组合今日作战数据/任务/等级/连续作战
+ *
+ * 性能优化: 共享单一 settingsFlow 订阅, 避免 3 次 watchAll() 重复订阅
+ */
 class HomeViewModel : ViewModel() {
 
     private val db = AppContainer.db
@@ -26,7 +30,11 @@ class HomeViewModel : ViewModel() {
 
     private val todayDateKey = DateUtil.dateKey()
 
-    private val battleStatsFlow = db.settingDao().watchAll().map { settings ->
+    // 单一 settings 订阅源 (之前 watchAll 被调用 3 次, 每次任意 setting 变化都触发 3 路重新计算)
+    private val settingsFlow = db.settingDao().watchAll()
+
+    // 从共享 settingsFlow 派生今日战绩 (仅当数据真正变化时才 emit)
+    private val battleStatsFlow = settingsFlow.map { settings ->
         val map = settings.associate { it.key to it.value }
         BattleStats(
             peopleSeen = map["people_seen_$todayDateKey"]?.toIntOrNull() ?: 0,
@@ -36,7 +44,7 @@ class HomeViewModel : ViewModel() {
     }
 
     /** 本周战绩 (周一~周六, 与数据分析页共用 settings 数据源) */
-    private val weekStatsFlow = db.settingDao().watchAll().map { settings ->
+    private val weekStatsFlow = settingsFlow.map { settings ->
         buildWeekStats(settings)
     }
 
@@ -47,7 +55,7 @@ class HomeViewModel : ViewModel() {
     /** 等级进度: 使用 LevelService 多条件判定 (非纯 XP) */
     private val levelProgressFlow = combine(
         statsFlow,
-        db.settingDao().watchAll()
+        settingsFlow
     ) { stats, settings ->
         val map = settings.associate { it.key to it.value }
         val totalXp = stats?.totalXp ?: 0

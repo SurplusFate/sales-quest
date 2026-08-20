@@ -62,11 +62,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.core.AppLevels
+import com.salesquest.sales_quest.data.entity.DailyTaskEntity
 import com.salesquest.sales_quest.services.DailyTaskConfig
+import com.salesquest.sales_quest.services.LevelProgress
+import com.salesquest.sales_quest.ui.BattleStats
 import com.salesquest.sales_quest.ui.HomeUiState
+import com.salesquest.sales_quest.ui.WeekDayStats
 import kotlinx.coroutines.launch
 
-/** 作战首页 - 核心使用闭环: 今日战绩 + 记录数据 + 今日任务 */
+/**
+ * 作战首页 - 核心使用闭环: 今日战绩 + 记录数据 + 今日任务
+ *
+ * 性能优化: 拆分为独立子 Composable, 各区域只读取自己需要的数据,
+ * 避免一个数字变化导致整页重组
+ */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(
@@ -86,124 +95,32 @@ fun HomePage(
                 .verticalScroll(rememberScrollState())
                 .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 100.dp)
         ) {
-            // === 等级卡片 (使用 LevelService 判定) ===
-            val progress = state.levelProgress
-            val level = progress?.currentLevel ?: AppLevels.levels.first()
-            val nextLevel = progress?.nextLevel
-            val xpProgress = if (nextLevel != null) {
-                val range = (nextLevel.xpRequired - level.xpRequired).toDouble()
-                val done = (state.totalXp - level.xpRequired).toDouble()
-                if (range <= 0) 1.0 else (done / range).coerceIn(0.0, 1.0)
-            } else 1.0
-            LevelCard(
-                level = level.level,
-                title = level.title,
+            // 等级卡片: 只读取等级相关字段
+            LevelSection(
+                levelProgress = state.levelProgress,
                 totalXp = state.totalXp,
-                currentLevelXp = level.xpRequired,
-                nextLevelXp = nextLevel?.xpRequired ?: level.xpRequired,
-                progress = xpProgress,
                 streakDays = state.streakDays
             )
             Spacer(Modifier.height(12.dp))
 
-            // === 今日战绩 (仅展示, 点击编辑) ===
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "今日战绩",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(onClick = { showDailyEntry = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("记录数据", style = MaterialTheme.typography.labelLarge)
-                }
-            }
-            Spacer(Modifier.height(4.dp))
-            Row {
-                EditableStatCard(
-                    value = state.stats.peopleSeen,
-                    label = "见人",
-                    icon = Icons.Filled.Groups,
-                    color = Color(0xFF2196F3),
-                    modifier = Modifier.weight(1f),
-                    onTap = {
-                        editMetric = EditMetricRequest("见人数", state.stats.peopleSeen, "人") { v ->
-                            AppContainer.quickActionService.setPeopleSeen(v)
-                        }
-                    }
-                )
-                Spacer(Modifier.width(8.dp))
-                EditableStatCard(
-                    value = state.stats.queries,
-                    label = "查询",
-                    icon = Icons.Filled.Search,
-                    color = Color(0xFF9C27B0),
-                    modifier = Modifier.weight(1f),
-                    onTap = {
-                        editMetric = EditMetricRequest("查询数", state.stats.queries, "次") { v ->
-                            AppContainer.quickActionService.setQuery(v)
-                        }
-                    }
-                )
-                Spacer(Modifier.width(8.dp))
-                EditableStatCard(
-                    value = state.stats.deals,
-                    label = "成交",
-                    icon = Icons.Filled.Celebration,
-                    color = Color(0xFFF44336),
-                    modifier = Modifier.weight(1f),
-                    onTap = {
-                        editMetric = EditMetricRequest("成交数", state.stats.deals, "单") { v ->
-                            AppContainer.quickActionService.setDeal(v)
-                        }
-                    }
-                )
-            }
+            // 今日战绩: 只读取 stats 字段
+            BattleStatsSection(
+                stats = state.stats,
+                onRecordData = { showDailyEntry = true },
+                onEditMetric = { req -> editMetric = req }
+            )
             Spacer(Modifier.height(16.dp))
 
-            // === 今日任务 (仅展示目标进度) ===
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "今日任务",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onNavigateToTaskConfig) {
-                    Icon(Icons.Filled.Settings, contentDescription = "基础任务设置", modifier = Modifier.size(20.dp))
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-
-            if (state.loading) {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (state.tasks.isEmpty()) {
-                EmptyTaskCard(config = state.config)
-            } else {
-                state.tasks.forEachIndexed { index, task ->
-                    val (label, icon, color) = taskMeta(task.metric)
-                    TaskRow(
-                        label = label,
-                        icon = icon,
-                        color = color,
-                        progress = task.progress,
-                        target = task.target,
-                        completed = task.completed
-                    )
-                    if (index < state.tasks.size - 1) {
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
-            }
-
+            // 今日任务: 只读取 tasks + config 字段
+            TaskSection(
+                tasks = state.tasks,
+                config = state.config,
+                loading = state.loading,
+                onNavigateToTaskConfig = onNavigateToTaskConfig
+            )
             Spacer(Modifier.height(16.dp))
 
-            // === 本周战绩 ===
+            // 本周战绩: 只读取 weekStats 字段
             WeeklyBattleCard(weekStats = state.weekStats)
         }
 
@@ -236,6 +153,140 @@ fun HomePage(
             sheetState = rememberModalBottomSheetState()
         ) {
             QuickActionSheet(onDone = { showDailyEntry = false })
+        }
+    }
+}
+
+/** 等级区域 — 仅依赖 levelProgress / totalXp / streakDays */
+@Composable
+private fun LevelSection(
+    levelProgress: LevelProgress?,
+    totalXp: Int,
+    streakDays: Int
+) {
+    val level = levelProgress?.currentLevel ?: AppLevels.levels.first()
+    val nextLevel = levelProgress?.nextLevel
+    val xpProgress = if (nextLevel != null) {
+        val range = (nextLevel.xpRequired - level.xpRequired).toDouble()
+        val done = (totalXp - level.xpRequired).toDouble()
+        if (range <= 0) 1.0 else (done / range).coerceIn(0.0, 1.0)
+    } else 1.0
+    LevelCard(
+        level = level.level,
+        title = level.title,
+        totalXp = totalXp,
+        currentLevelXp = level.xpRequired,
+        nextLevelXp = nextLevel?.xpRequired ?: level.xpRequired,
+        progress = xpProgress,
+        streakDays = streakDays
+    )
+}
+
+/** 今日战绩区域 — 仅依赖 stats, 修改见人数不会触发等级区域重组 */
+@Composable
+private fun BattleStatsSection(
+    stats: BattleStats,
+    onRecordData: () -> Unit,
+    onEditMetric: (EditMetricRequest) -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "今日战绩",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onRecordData) {
+            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("记录数据", style = MaterialTheme.typography.labelLarge)
+        }
+    }
+    Spacer(Modifier.height(4.dp))
+    Row {
+        EditableStatCard(
+            value = stats.peopleSeen,
+            label = "见人",
+            icon = Icons.Filled.Groups,
+            color = Color(0xFF2196F3),
+            modifier = Modifier.weight(1f),
+            onTap = {
+                onEditMetric(EditMetricRequest("见人数", stats.peopleSeen, "人") { v ->
+                    AppContainer.quickActionService.setPeopleSeen(v)
+                })
+            }
+        )
+        Spacer(Modifier.width(8.dp))
+        EditableStatCard(
+            value = stats.queries,
+            label = "查询",
+            icon = Icons.Filled.Search,
+            color = Color(0xFF9C27B0),
+            modifier = Modifier.weight(1f),
+            onTap = {
+                onEditMetric(EditMetricRequest("查询数", stats.queries, "次") { v ->
+                    AppContainer.quickActionService.setQuery(v)
+                })
+            }
+        )
+        Spacer(Modifier.width(8.dp))
+        EditableStatCard(
+            value = stats.deals,
+            label = "成交",
+            icon = Icons.Filled.Celebration,
+            color = Color(0xFFF44336),
+            modifier = Modifier.weight(1f),
+            onTap = {
+                onEditMetric(EditMetricRequest("成交数", stats.deals, "单") { v ->
+                    AppContainer.quickActionService.setDeal(v)
+                })
+            }
+        )
+    }
+}
+
+/** 今日任务区域 — 仅依赖 tasks / config / loading */
+@Composable
+private fun TaskSection(
+    tasks: List<DailyTaskEntity>,
+    config: DailyTaskConfig?,
+    loading: Boolean,
+    onNavigateToTaskConfig: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "今日任务",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onNavigateToTaskConfig) {
+            Icon(Icons.Filled.Settings, contentDescription = "基础任务设置", modifier = Modifier.size(20.dp))
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+
+    if (loading) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    } else if (tasks.isEmpty()) {
+        EmptyTaskCard(config = config)
+    } else {
+        tasks.forEachIndexed { index, task ->
+            val (label, icon, color) = taskMeta(task.metric)
+            TaskRow(
+                label = label,
+                icon = icon,
+                color = color,
+                progress = task.progress,
+                target = task.target,
+                completed = task.completed
+            )
+            if (index < tasks.size - 1) {
+                Spacer(Modifier.height(8.dp))
+            }
         }
     }
 }
@@ -477,6 +528,3 @@ fun EmptyTaskCard(config: DailyTaskConfig?) {
         )
     }
 }
-
-@Composable
-internal fun HomeUiState.asSnapshot(): HomeUiState = this

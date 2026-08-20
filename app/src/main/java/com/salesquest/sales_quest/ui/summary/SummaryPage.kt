@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.data.DateUtil
+import com.salesquest.sales_quest.services.DailySummary
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -218,28 +219,8 @@ fun SummaryPage(
             }
 
             // === 历史总结 ===
-            if (state.history.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
-                Text(
-                    "历史总结",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(8.dp))
-                state.history.forEach { summary ->
-                    Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(summary.dateKey, style = MaterialTheme.typography.titleSmall)
-                            if (summary.good.isNotBlank()) {
-                                Text("做得好的: ${summary.good}", style = MaterialTheme.typography.bodySmall)
-                            }
-                            if (summary.improvement.isNotBlank()) {
-                                Text("改进: ${summary.improvement}", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            }
+            // 性能优化: 提取为独立 Composable, 文本输入时不会重组历史列表
+            HistorySection(history = state.history)
         }
     }
 
@@ -275,5 +256,31 @@ private fun StatItem(label: String, value: Int, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall)
         Text(value.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** 历史总结区域 — 独立 Composable, 文本输入时不会重组 */
+@Composable
+private fun HistorySection(history: List<DailySummary>) {
+    if (history.isEmpty()) return
+    Spacer(Modifier.height(20.dp))
+    Text(
+        "历史总结",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold
+    )
+    Spacer(Modifier.height(8.dp))
+    history.forEach { summary ->
+        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+            Column(Modifier.padding(12.dp)) {
+                Text(summary.dateKey, style = MaterialTheme.typography.titleSmall)
+                if (summary.good.isNotBlank()) {
+                    Text("做得好的: ${summary.good}", style = MaterialTheme.typography.bodySmall)
+                }
+                if (summary.improvement.isNotBlank()) {
+                    Text("改进: ${summary.improvement}", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
     }
 }
