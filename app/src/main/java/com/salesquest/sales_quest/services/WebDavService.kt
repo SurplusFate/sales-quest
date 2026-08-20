@@ -179,14 +179,18 @@ class WebDavService(
                     resp.code == 401 -> WebDavResult.Failure("认证失败, 请确认使用的是坚果云「应用密码」而非登录密码")
                     resp.code == 403 -> WebDavResult.Failure("拒绝访问, 请确认应用密码权限包含读写")
                     resp.code == 404 -> WebDavResult.Failure("目录不存在, 请先在坚果云网页端创建目录 ${config.dir}")
+                    resp.code == 405 -> WebDavResult.Failure("方法不允许 (405), 请检查 URL 是否指向 /dav/ 目录")
                     resp.code in 300..399 -> WebDavResult.Failure("重定向异常 (${resp.code}), 请检查 URL 是否完整")
                     else -> WebDavResult.Failure("连接失败: HTTP ${resp.code}")
                 }
             }
         }.getOrElse {
+            // 很多 Java 异常的 message 为 null, 不能直接插值, 否则用户看到 "null"
+            val errMsg = it.message ?: it.javaClass.simpleName
+            com.salesquest.sales_quest.core.AppLogger.error("WebDavService", "连接异常: ${it.javaClass.name}: $errMsg")
             when (it) {
                 is javax.net.ssl.SSLException ->
-                    WebDavResult.Failure("SSL/TLS 握手失败: ${it.message}")
+                    WebDavResult.Failure("SSL/TLS 握手失败: $errMsg\n可能原因: 证书不信任或网络被劫持")
                 is java.net.UnknownHostException ->
                     WebDavResult.Failure("无法解析域名, 请检查网络连接和 URL 拼写")
                 is java.net.SocketTimeoutException ->
@@ -194,9 +198,9 @@ class WebDavService(
                 is java.net.ConnectException ->
                     WebDavResult.Failure("无法连接到服务器, 请检查网络")
                 is IOException ->
-                    WebDavResult.Failure("网络错误: ${it.message}")
+                    WebDavResult.Failure("网络错误: $errMsg")
                 else ->
-                    WebDavResult.Failure("连接异常: ${it.message}")
+                    WebDavResult.Failure("连接异常: ${it.javaClass.simpleName}: $errMsg")
             }
         }
     }
