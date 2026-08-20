@@ -30,6 +30,8 @@ legacy/app/
 local.properties
 *.apk
 *.aab
+# 允许 releases 目录下的 APK 发布包
+!releases/*.apk
 *.keystore
 !debug.keystore
 linux/
