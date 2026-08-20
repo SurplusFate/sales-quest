@@ -16,9 +16,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -136,20 +134,6 @@ fun SettingsPage(
             item { SettingsGroup("应用") }
             item {
                 SettingsListItem(
-                    icon = Icons.Filled.Info,
-                    title = "当前版本",
-                    trailing = { Text("V${BuildConfig.VERSION_NAME}") }
-                )
-            }
-            item {
-                SettingsListItem(
-                    icon = Icons.Filled.Storage,
-                    title = "数据库版本",
-                    trailing = { Text("v${AppDatabase.VERSION}") }
-                )
-            }
-            item {
-                SettingsListItem(
                     icon = Icons.Filled.SportsEsports,
                     title = "关于 Sales Quest",
                     subtitle = "游戏化销售作战系统",
@@ -226,7 +210,11 @@ fun SettingsPage(
                 Column {
                     Text("Sales Quest", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
-                    Text("版本 ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "应用版本  V${BuildConfig.VERSION_NAME}  ·  数据库 v${AppDatabase.VERSION}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.height(12.dp))
                     Text("游戏化销售作战系统", style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(8.dp))

@@ -127,6 +127,13 @@
 - 等级系统统一从底部导航"成就"tab 进入, 避免多入口混淆
 - 清理无用 import (`MilitaryTech`, `AppLevels`) 和参数 (`onOpenXpLevel`)
 
+### v1.0.8 (2026-08-20) - 关于对话框整合版本信息
+
+**优化**
+- 删除设置页"当前版本"和"数据库版本"两个独立条目
+- 将应用版本和数据库版本整合到"关于 Sales Quest"对话框中, 一行展示
+- 清理无用 import (`Info`, `Storage`)
+
 ### 历史版本 (Flutter → Android 原生迁移前)
 
 - v0.2.x: Flutter 版本 (已归档至 legacy/ 目录)
