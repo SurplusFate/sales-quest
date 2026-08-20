@@ -34,5 +34,7 @@ local.properties
 !releases/*.apk
 *.keystore
 !debug.keystore
+# 签名配置文件 (含密码, 禁止提交)
+keystore.properties
 linux/
 android/
