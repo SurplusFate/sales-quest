@@ -47,7 +47,19 @@ class HomeViewModel : ViewModel() {
         buildWeekStats(settings)
     }
 
-    private val tasksFlow = db.taskDao().watchByDate(todayDateKey)
+    /** 今日任务配置响应式数据源: 配置修改 → settings 表 → Flow → 首页自动重组 */
+    private val configFlow: Flow<DailyTaskConfig> =
+        AppContainer.dailyTaskService.watchTodayConfig()
+
+    /** 合并 config 与 tasks, 用 config 的对应 target 覆盖 task 行的 target, 确保配置变更后首页立即同步 */
+    private val tasksFlow = combine(
+        db.taskDao().watchByDate(todayDateKey),
+        configFlow
+    ) { tasks, config ->
+        tasks.map { task ->
+            task.copy(target = config.getTarget(task.metric))
+        }
+    }
 
     private val statsFlow = db.statsDao().watchStats()
 
@@ -66,10 +78,6 @@ class HomeViewModel : ViewModel() {
         val requirements = levelService.getRequirements()
         LevelService.buildProgress(requirements, totalXp, totalMeet, totalQuery, totalDeal, streakDays)
     }
-
-    /** 今日任务配置响应式数据源: 配置修改 → settings 表 → Flow → 首页自动重组 */
-    private val configFlow: Flow<DailyTaskConfig> =
-        AppContainer.dailyTaskService.watchTodayConfig()
 
     // Kotlin combine 只支持 5 个有类型重载; 6 个流需嵌套
     private val statsTasksPair = combine(battleStatsFlow, tasksFlow) { stats, tasks -> stats to tasks }

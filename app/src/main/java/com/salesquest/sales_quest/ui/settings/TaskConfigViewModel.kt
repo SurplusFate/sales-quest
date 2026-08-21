@@ -5,23 +5,31 @@ import androidx.lifecycle.viewModelScope
 import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.services.DailyTaskConfig
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** 任务配置 ViewModel */
+/** 任务配置 ViewModel — 响应式读取今日配置, 保存后自动反映最新值 */
 class TaskConfigViewModel : ViewModel() {
 
-    val config: MutableStateFlow<DailyTaskConfig?> = MutableStateFlow(null)
-    val locked: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    val loading: MutableStateFlow<Boolean> = MutableStateFlow(true)
+    /** 响应式配置: settings 表变更 → Flow emit → UI 自动重组 */
+    val config: StateFlow<DailyTaskConfig?> =
+        AppContainer.dailyTaskService.watchTodayConfig()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private val _locked = MutableStateFlow(false)
+    val locked: StateFlow<Boolean> = _locked
+
+    private val _loading = MutableStateFlow(true)
+    val loading: StateFlow<Boolean> = _loading
 
     init {
         viewModelScope.launch {
             try {
-                config.value = AppContainer.dailyTaskService.getTodayConfig()
-                locked.value = AppContainer.dailyTaskService.isTodayLocked()
+                _locked.value = AppContainer.dailyTaskService.isTodayLocked()
             } finally {
-                loading.value = false
+                _loading.value = false
             }
         }
     }
@@ -43,7 +51,6 @@ class TaskConfigViewModel : ViewModel() {
             includeDeal = includeDeal
         )
         AppContainer.dailyTaskService.setDayConfig(System.currentTimeMillis(), cfg)
-        config.value = cfg
-        locked.value = AppContainer.dailyTaskService.isTodayLocked()
+        _locked.value = AppContainer.dailyTaskService.isTodayLocked()
     }
 }
