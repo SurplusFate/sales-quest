@@ -40,11 +40,29 @@ data class LevelProgress(
  */
 class LevelService(private val db: AppDatabase) {
 
-    /** 读取已配置的晋级条件, 无配置时返回默认 */
+    /**
+     * 读取晋级条件:
+     * - 有自定义条件的等级 → 使用自定义条件
+     * - 没有自定义条件的等级 → 使用该等级默认条件 (fallback)
+     * - 全部无配置 → 返回完整默认条件
+     */
     suspend fun getRequirements(): List<LevelRequirement> {
         val configured = db.levelRequirementDao().getAll()
         if (configured.isEmpty()) return AppLevels.defaultRequirements
-        return configured.map { it.toLevelRequirement() }
+
+        val configuredByLevel = configured.groupBy { it.level }
+        val result = mutableListOf<LevelRequirement>()
+
+        for (lv in AppLevels.levels) {
+            val levelConfigured = configuredByLevel[lv.level]
+            if (levelConfigured != null && levelConfigured.isNotEmpty()) {
+                result.addAll(levelConfigured.map { it.toLevelRequirement() })
+            } else {
+                result.addAll(AppLevels.defaultRequirements.filter { it.level == lv.level })
+            }
+        }
+
+        return result
     }
 
     /** 当前用户进度 (从 DB 读取统计数据) */

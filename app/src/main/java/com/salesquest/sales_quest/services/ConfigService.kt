@@ -1,5 +1,6 @@
 package com.salesquest.sales_quest.services
 
+import androidx.room.withTransaction
 import com.salesquest.sales_quest.core.AppLevels
 import com.salesquest.sales_quest.core.ConfigKeys
 import com.salesquest.sales_quest.core.SettingsKeys
@@ -115,29 +116,37 @@ class ConfigService(
 
     // ==================== 导入 ====================
 
-    /** 解析 + 校验 + 应用配置。失败返回错误, 成功返回 Success */
+    /**
+     * 解析 + 校验 + 应用配置。失败返回错误, 成功返回 Success
+     *
+     * 原则: 先验证后修改, 应用配置使用 Transaction 保证原子性 (要么全部成功, 要么不改变原配置)
+     */
     suspend fun importConfigJson(raw: String): ConfigImportResult {
+        // 1. 解析 JSON
         val config = try {
             json.decodeFromString(ConfigFile.serializer(), raw)
         } catch (e: Exception) {
             return ConfigImportResult.FormatError("配置文件格式错误: ${e.message}")
         }
 
+        // 2. 版本校验
         if (config.version != ConfigKeys.CONFIG_VERSION) {
             return ConfigImportResult.VersionError(config.version, ConfigKeys.CONFIG_VERSION)
         }
 
-        // 校验字段与数值范围
+        // 3. 完整性 + 合法性校验 (在任何 DB 写入之前)
         validate(config)?.let { return it }
 
-        // 应用配置
-        applyConfig(config)
+        // 4. 原子性应用: 整个 Transaction 成功才 COMMIT, 任一步失败自动 ROLLBACK
+        db.withTransaction {
+            applyConfig(config)
+            db.settingDao().setInt(ConfigKeys.IMPORTED_CONFIG_VERSION, config.version)
+            db.settingDao().set(com.salesquest.sales_quest.data.entity.SettingEntity(
+                key = ConfigKeys.IMPORTED_CONFIG_AT,
+                value = System.currentTimeMillis().toString()
+            ))
+        }
 
-        db.settingDao().setInt(ConfigKeys.IMPORTED_CONFIG_VERSION, config.version)
-        db.settingDao().set(com.salesquest.sales_quest.data.entity.SettingEntity(
-            key = ConfigKeys.IMPORTED_CONFIG_AT,
-            value = System.currentTimeMillis().toString()
-        ))
         onDataChanged()
         return ConfigImportResult.Success(config.version)
     }
@@ -150,6 +159,13 @@ class ConfigService(
             }
             if (targets.any { it > 100000 }) {
                 return ConfigImportResult.ValidationError("任务目标超出范围 (0-100000)")
+            }
+            // 销售漏斗关系: 成交目标 ≤ 查询目标 ≤ 见人目标
+            if (tc.queryTarget > tc.meetTarget) {
+                return ConfigImportResult.ValidationError("查询目标 (${tc.queryTarget}) 不能大于见人目标 (${tc.meetTarget})")
+            }
+            if (tc.dealTarget > tc.queryTarget) {
+                return ConfigImportResult.ValidationError("成交目标 (${tc.dealTarget}) 不能大于查询目标 (${tc.queryTarget})")
             }
         }
 

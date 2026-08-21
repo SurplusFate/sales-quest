@@ -1,12 +1,18 @@
 package com.salesquest.sales_quest.data.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
  * 客户表 (PRD §25)
+ *
+ * v3: 新增 customerNumber 字段 (UNIQUE), 用于可靠编号生成
  */
-@Entity(tableName = "customers")
+@Entity(
+    tableName = "customers",
+    indices = [Index(value = ["customerNumber"], unique = true)]
+)
 data class CustomerEntity(
     @PrimaryKey val id: String = "",
     val name: String,
@@ -29,6 +35,7 @@ data class CustomerEntity(
     val nextAction: String? = null,
     val nextFollowUpAt: Long? = null,
     val note: String? = null,
+    val customerNumber: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

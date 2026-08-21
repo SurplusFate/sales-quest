@@ -41,8 +41,8 @@ import com.salesquest.sales_quest.data.entity.XpRecordEntity
         LevelRequirementEntity::class,
         DailySummaryEntity::class
     ],
-    version = 2,
-    exportSchema = false
+    version = 3,
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -80,7 +80,7 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
         const val DB_NAME = "sales_quest.db"
 
         /** v1 → v2: 新增 level_requirements 与 daily_summaries 表 */
@@ -109,9 +109,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v2 → v3: 新增 customerNumber 字段 (UNIQUE), 编号不再依赖客户数量 */
+        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE customers ADD COLUMN customerNumber TEXT")
+                db.execSQL("CREATE UNIQUE INDEX index_customers_customerNumber ON customers(customerNumber) WHERE customerNumber IS NOT NULL")
+                // 回填: name 形如 #NNN 的记录将其同步到 customerNumber
+                db.execSQL("UPDATE customers SET customerNumber = name WHERE name LIKE '#%' AND customerNumber IS NULL")
+            }
+        }
+
         fun build(context: Context): AppDatabase {
             return Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
         }
     }

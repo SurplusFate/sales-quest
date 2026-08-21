@@ -88,21 +88,26 @@ class QuickActionService(
         }
     }
 
-    /** 数据更新后的统一处理流程 */
+    /**
+     * 数据更新后的统一处理流程
+     *
+     * 错误处理规则:
+     * - 半核心操作 (任务进度 / XP 发放): 失败记日志, 不阻断后续半核心操作
+     * - 附加操作 (成就解锁): 失败记日志, 不影响任何其他操作
+     * - 核心数据 (见人/查询/成交数) 已在调用方写入, 此处不处理
+     */
     private suspend fun postUpdate() {
+        // 半核心: 任务进度刷新 + XP 发放
         try {
-            // 1. 刷新任务进度, 发放单个任务 XP (XpService 保证防重复)
             val newlyCompleted = taskService.refreshTodayProgress()
             for (task in newlyCompleted) {
                 xpService.awardTaskXp(task.taskId, task.xpReward)
             }
 
-            // 2. 检查全部基础任务是否完成
             if (taskService.checkAllTasksCompleted()) {
                 xpService.onDailyTasksCompleted()
             }
 
-            // 3. 如果成交不参与基础任务 → 发放成交额外 XP
             val config = taskService.getTodayConfig()
             if (!config.includeDeal) {
                 val dateKey = DateUtil.dateKey()
@@ -111,14 +116,18 @@ class QuickActionService(
                     xpService.awardDealExtraXp(dealCount)
                 }
             }
+        } catch (e: Exception) {
+            AppLogger.error("QuickActionService", "任务/XP 处理失败: $e", e.stackTraceToString())
+        }
 
-            // 4. 检查成就解锁
+        // 附加: 成就解锁 (失败不影响核心数据和 XP)
+        try {
             achievementService.checkAndUnlock()
         } catch (e: Exception) {
-            AppLogger.error("QuickActionService", "postUpdate 失败: $e", e.stackTraceToString())
-        } finally {
-            // 无论 postUpdate 是否异常, 数据已写入, 标记自动备份
-            onDataChanged()
+            AppLogger.error("QuickActionService", "成就检查失败: $e", e.stackTraceToString())
         }
+
+        // 无论上述是否异常, 数据已写入, 标记自动备份
+        onDataChanged()
     }
 }

@@ -67,6 +67,9 @@ class AutoBackupManager(
      * 标记数据已变化, 触发防抖延迟备份
      *
      * 线程安全, 可从任意线程调用
+     *
+     * delayMs > 0 (生产): 启动延迟备份协程
+     * delayMs <= 0 (测试): 仅更新状态, 不启动后台协程 (由 triggerBackupNowForTest 控制)
      */
     fun markDirty() {
         if (!configStore.load().autoBackup) return
@@ -78,9 +81,11 @@ class AutoBackupManager(
 
         // 取消旧的延迟任务, 启动新的
         delayJob?.cancel()
-        delayJob = scope.launch {
-            delay(delayMs)
-            executeBackup()
+        if (delayMs > 0) {
+            delayJob = scope.launch {
+                delay(delayMs)
+                executeBackup()
+            }
         }
     }
 
@@ -153,15 +158,23 @@ class AutoBackupManager(
     /** 重新安排延迟备份 (备份期间产生新数据时) */
     private fun scheduleNextBackup() {
         delayJob?.cancel()
-        delayJob = scope.launch {
-            delay(delayMs)
-            executeBackup()
+        if (delayMs > 0) {
+            delayJob = scope.launch {
+                delay(delayMs)
+                executeBackup()
+            }
         }
     }
 
-    /** 仅供测试: 直接触发备份 (跳过延迟) */
+    /** 仅供测试: 直接触发备份 (跳过延迟, 取消挂起的后台任务) */
     suspend fun triggerBackupNowForTest() {
+        // 取消 markDirty 启动的延迟备份, 避免与测试直接触发的备份竞争
+        delayJob?.cancel()
+        delayJob = null
         executeBackup()
+        // 取消 executeBackup 中 scheduleNextBackup 可能启动的后台任务
+        delayJob?.cancel()
+        delayJob = null
     }
 
     /** 仅供测试: 获取当前 dirty 状态 */

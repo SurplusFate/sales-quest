@@ -16,8 +16,8 @@ android {
         applicationId = "com.salesquest.sales_quest"
         minSdk = 24
         targetSdk = 35
-        versionCode = 17
-        versionName = "1.0.15"
+        versionCode = 18
+        versionName = "1.0.16"
     }
 
     // 读取签名配置: 优先从 keystore.properties 读取, 不存在则回退 debug 签名
@@ -69,6 +69,11 @@ android {
             isIncludeAndroidResources = true
         }
     }
+}
+
+// Room: 导出数据库 schema (用于检查 Migration、防止字段修改导致数据丢失)
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 // Compose UI 测试依赖 debug 变体的 manifest (debugImplementation), release 变体无法解析 launcher activity

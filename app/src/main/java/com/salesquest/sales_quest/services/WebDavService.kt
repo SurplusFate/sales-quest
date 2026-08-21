@@ -374,22 +374,6 @@ open class WebDavService(
         }
     }
 
-    // ==================== 自动备份 ====================
-
-    /** 检查是否需要自动备份 (开启且距上次超过 24h) */
-    suspend fun shouldAutoBackup(): Boolean {
-        val config = configStore.load()
-        if (!config.autoBackup) return false
-        if (!configStore.isConfigured()) return false
-        val last = configStore.lastBackupAt()
-        return System.currentTimeMillis() - last >= BackupDefaults.AUTO_BACKUP_INTERVAL_MS
-    }
-
-    /** 执行自动备份 (若需要) */
-    suspend fun maybeAutoBackup(): WebDavResult {
-        return if (shouldAutoBackup()) backupNow() else WebDavResult.Success("无需备份")
-    }
-
     // ==================== URL 工具 ====================
 
     internal fun joinUrl(base: String, path: String): String {

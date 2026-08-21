@@ -1,6 +1,7 @@
 package com.salesquest.sales_quest.core
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.salesquest.sales_quest.data.AppDatabase
 import com.salesquest.sales_quest.data.CustomerStage
 import com.salesquest.sales_quest.data.IdGenerator
@@ -112,88 +113,109 @@ object AppContainer {
 
     // ==================== 客户相关 ====================
 
-    /** 生成客户编号 #001, #002, ... */
+    /**
+     * 生成客户编号 #001, #002, ...
+     *
+     * 基于历史最大已分配编号 + 1 (不依赖当前客户数量, 删除客户不回退计数器)
+     * 使用 Transaction 保证原子性, 防止并发新增生成相同编号
+     * 数据恢复/导入后: 取 max(计数器, 数据库最大编号) + 1 防止冲突
+     */
     suspend fun generateCustomerNumber(): String {
-        val count = db.customerDao().getAll().size
-        val num = count + 1
-        return "#%03d".format(num)
+        return db.withTransaction {
+            val counterMax = db.settingDao().getInt(SettingsKeys.MAX_CUSTOMER_NUMBER)
+            val dbMax = db.customerDao().getMaxCustomerNumber()
+                ?.removePrefix("#")?.toIntOrNull() ?: 0
+            val nextNum = maxOf(counterMax, dbMax) + 1
+            db.settingDao().setInt(SettingsKeys.MAX_CUSTOMER_NUMBER, nextNum)
+            "#%03d".format(nextNum)
+        }
     }
 
-    /** 新增/编辑客户 (所有字段可选), 返回客户 id */
+    /** 新增/编辑客户 (所有字段可选, null 表示不修改), 返回客户 id */
     suspend fun saveCustomer(params: SaveCustomerParams): String {
         val now = System.currentTimeMillis()
         if (params.id != null) {
+            // === 编辑: null 字段保留原值, 非 null 字段使用新值 ===
             val existing = db.customerDao().getById(params.id) ?: throw IllegalStateException("客户不存在")
             val updated = existing.copy(
                 name = params.name ?: existing.name,
                 phone = params.phone ?: existing.phone,
-                operator = params.operator.code,
+                operator = params.operator?.code ?: existing.operator,
                 selfReportedCost = params.selfReportedCost ?: existing.selfReportedCost,
                 actualCost = params.actualCost ?: existing.actualCost,
                 packageName = params.packageName ?: existing.packageName,
                 traffic = params.traffic ?: existing.traffic,
                 minutes = params.minutes ?: existing.minutes,
-                broadband = params.broadband,
-                subCards = params.subCards,
-                camera = params.camera,
-                status = params.stage.code,
-                salesStage = params.stage.code,
+                broadband = params.broadband ?: existing.broadband,
+                subCards = params.subCards ?: existing.subCards,
+                camera = params.camera ?: existing.camera,
+                status = params.stage?.code ?: existing.status,
+                salesStage = params.stage?.code ?: existing.salesStage,
                 nextFollowUpAt = params.nextFollowUpAt ?: existing.nextFollowUpAt,
                 note = params.note ?: existing.note,
                 updatedAt = now
             )
             db.customerDao().updateCustomer(updated)
-            autoBackupManager.markDirty()
+            markDirtySafe()
             return params.id
         } else {
+            // === 新增: null 字段使用默认值 ===
             val name = if (params.name.isNullOrEmpty()) generateCustomerNumber() else params.name!!
             val customer = CustomerEntity(
                 id = IdGenerator.gen("c_"),
                 name = name,
                 phone = params.phone ?: "",
-                operator = params.operator.code,
+                operator = params.operator?.code ?: Operator.UNKNOWN.code,
                 selfReportedCost = params.selfReportedCost,
                 actualCost = params.actualCost,
                 packageName = params.packageName,
                 traffic = params.traffic,
                 minutes = params.minutes,
-                broadband = params.broadband,
-                subCards = params.subCards,
-                camera = params.camera,
-                status = params.stage.code,
-                salesStage = params.stage.code,
+                broadband = params.broadband ?: false,
+                subCards = params.subCards ?: 0,
+                camera = params.camera ?: false,
+                status = params.stage?.code ?: CustomerStage.NEW.code,
+                salesStage = params.stage?.code ?: CustomerStage.NEW.code,
                 nextFollowUpAt = params.nextFollowUpAt,
                 note = params.note,
+                customerNumber = if (name.startsWith("#")) name else null,
                 createdAt = now,
                 updatedAt = now
             )
             db.customerDao().insertCustomer(customer)
-            autoBackupManager.markDirty()
+            markDirtySafe()
             return customer.id
         }
     }
 
     suspend fun deleteCustomer(id: String) {
         db.customerDao().deleteCustomer(id)
-        autoBackupManager.markDirty()
+        markDirtySafe()
+    }
+
+    /** 安全标记数据已变化 (测试环境可能未初始化 autoBackupManager) */
+    private fun markDirtySafe() {
+        if (this::autoBackupManager.isInitialized) {
+            autoBackupManager.markDirty()
+        }
     }
 }
 
-/** 客户保存参数 (所有字段可选) */
+/** 客户保存参数 (所有字段可选, null 表示不修改/使用默认值) */
 data class SaveCustomerParams(
     val id: String? = null,
     val name: String? = null,
     val phone: String? = null,
-    val operator: Operator = Operator.UNKNOWN,
+    val operator: Operator? = null,
     val selfReportedCost: Int? = null,
     val actualCost: Int? = null,
     val packageName: String? = null,
     val traffic: String? = null,
     val minutes: String? = null,
-    val broadband: Boolean = false,
-    val subCards: Int = 0,
-    val camera: Boolean = false,
-    val stage: CustomerStage = CustomerStage.NEW,
+    val broadband: Boolean? = null,
+    val subCards: Int? = null,
+    val camera: Boolean? = null,
+    val stage: CustomerStage? = null,
     val nextFollowUpAt: Long? = null,
     val note: String? = null
 )

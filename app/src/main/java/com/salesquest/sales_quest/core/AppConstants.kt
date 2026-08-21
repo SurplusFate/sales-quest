@@ -171,6 +171,9 @@ object SettingsKeys {
     fun taskXp(taskId: String, dateKey: String) = "task_xp_${taskId}_$dateKey"
     fun dailyCompletion(dateKey: String) = "daily_completion_$dateKey"
     fun dealExtraXpAwarded(dateKey: String) = "deal_extra_xp_awarded_$dateKey"
+
+    /** 客户编号计数器: 记录历史最大已分配编号 (删除客户不回退) */
+    const val MAX_CUSTOMER_NUMBER = "max_customer_number"
 }
 
 /** 配置文件导入/导出相关键 */
@@ -197,5 +200,4 @@ object BackupKeys {
 object BackupDefaults {
     const val DEFAULT_WEBDAV_DIR = "/SalesQuest"
     const val AUTO_BACKUP_DAILY = true
-    const val AUTO_BACKUP_INTERVAL_MS = 24L * 60 * 60 * 1000
 }

@@ -148,18 +148,18 @@ class AutoBackupManagerTest {
         // 模拟: markDirty (version=1) → 备份开始 → 备份期间 markDirty (version=2) → 备份成功但版本不匹配
         manager.markDirty()
         val versionBeforeBackup = manager.getDataChangeVersion()
+        assertEquals(1, versionBeforeBackup)
 
-        // 模拟备份过程中产生新数据
-        manager.markDirty()
-        val versionAfterNewData = manager.getDataChangeVersion()
+        // 模拟备份过程中产生新数据: backupNow 执行时触发 markDirty
+        fakeWebDavService.onBackupStart = { manager.markDirty() }
 
         // 执行备份 (此时版本号已变化)
         manager.triggerBackupNowForTest()
 
         assertEquals(1, manager.backupExecutionCount)
-        // dirty 应保持 true (因为备份期间产生了新数据)
+        // dirty 应保持 true (因为备份期间产生了新数据, 版本号不匹配)
         assertTrue("备份期间有新数据, dirty 应保持 true", manager.isDirty())
-        assertTrue(versionAfterNewData > versionBeforeBackup)
+        assertTrue(manager.getDataChangeVersion() > versionBeforeBackup)
     }
 
     // ==================== 测试 6: 自动备份关闭 → 不上传 ====================
@@ -201,6 +201,7 @@ class AutoBackupManagerTest {
     /**
      * Fake WebDavService: 继承 WebDavService 但覆盖 backupNow()
      * 只记录调用, 不真正执行网络请求
+     * onBackupStart: 备份开始时的回调 (用于模拟备份过程中产生新数据)
      */
     private class FakeWebDavService(
         context: Context,
@@ -208,8 +209,10 @@ class AutoBackupManagerTest {
         backupService: BackupService
     ) : WebDavService(context, configStore, backupService) {
         var backupResult: WebDavResult = WebDavResult.Success("测试备份成功")
+        var onBackupStart: (() -> Unit)? = null
 
         override suspend fun backupNow(config: WebDavConfig): WebDavResult {
+            onBackupStart?.invoke()
             return backupResult
         }
     }

@@ -158,7 +158,7 @@ fun WebDavPage(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("自动备份", style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        "每天自动备份一次",
+                        "数据变化后自动备份",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

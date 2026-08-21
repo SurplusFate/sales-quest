@@ -157,10 +157,26 @@ class LevelServiceTest {
             LevelRequirementEntity(id = "t2", level = 3, conditionType = "XP", threshold = 300)
         )
         val reqs = service.getRequirements()
-        assertEquals(2, reqs.size)
-        assertTrue(reqs.all { it.level == 3 })
+
+        // Lv3 有自定义配置 → 使用配置条件 (2 条: TOTAL_DEAL=5, XP=300)
+        val lv3Reqs = reqs.filter { it.level == 3 }
+        assertEquals(2, lv3Reqs.size)
+        assertTrue(lv3Reqs.all { it.level == 3 })
+        assertTrue(lv3Reqs.any { it.conditionType == LevelConditionType.TOTAL_DEAL && it.threshold == 5 })
+        assertTrue(lv3Reqs.any { it.conditionType == LevelConditionType.XP && it.threshold == 300 })
+
+        // Lv2 无自定义配置 → fallback 到默认条件
+        val lv2Reqs = reqs.filter { it.level == 2 }
+        assertEquals(AppLevels.defaultRequirements.filter { it.level == 2 }, lv2Reqs)
+
+        // Lv4 无自定义配置 → fallback 到默认条件
+        val lv4Reqs = reqs.filter { it.level == 4 }
+        assertEquals(AppLevels.defaultRequirements.filter { it.level == 4 }, lv4Reqs)
+
+        // 升级判定: XP 500 达 Lv3 XP 门槛, 但 deal 4 < 5 → 不晋级
         val level = LevelService.evaluateCurrentLevel(reqs, totalXp = 500, totalMeet = 0, totalQuery = 0, totalDeal = 4, streakDays = 0)
         assertEquals(2, level)
+        // deal 5 >= 5 → 晋级到 Lv3
         val level2 = LevelService.evaluateCurrentLevel(reqs, totalXp = 500, totalMeet = 0, totalQuery = 0, totalDeal = 5, streakDays = 0)
         assertEquals(3, level2)
     }
