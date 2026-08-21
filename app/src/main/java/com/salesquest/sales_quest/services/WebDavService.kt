@@ -119,7 +119,7 @@ data class BackupFileInfo(val name: String, val size: Long)
  *
  * 提供: 测试连接 / 立即备份 / 获取备份列表 / 恢复备份 / 自动备份检查
  */
-class WebDavService(
+open class WebDavService(
     private val context: Context,
     private val configStore: WebDavConfigStore = WebDavConfigStore(context),
     private val backupService: BackupService
@@ -243,7 +243,7 @@ class WebDavService(
     // ==================== 备份 ====================
 
     /** 立即备份: 导出数据 → 打包 zip → PUT 上传 */
-    suspend fun backupNow(config: WebDavConfig = configStore.load()): WebDavResult {
+    open suspend fun backupNow(config: WebDavConfig = configStore.load()): WebDavResult {
         if (!config.isConfigured()) return WebDavResult.Failure("请先完成账号配置")
         ensureDir(config)
 

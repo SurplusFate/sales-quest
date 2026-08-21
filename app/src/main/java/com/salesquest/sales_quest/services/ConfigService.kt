@@ -57,7 +57,10 @@ sealed class ConfigImportResult {
  * 原则: 配置文件只控制「App 怎么运行」, 数据存于数据库。
  * 导入后即使删除原 JSON 文件, App 仍可正常运行 (已写入内部 DB)。
  */
-class ConfigService(private val db: AppDatabase) {
+class ConfigService(
+    private val db: AppDatabase,
+    private val onDataChanged: () -> Unit = {}
+) {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -135,6 +138,7 @@ class ConfigService(private val db: AppDatabase) {
             key = ConfigKeys.IMPORTED_CONFIG_AT,
             value = System.currentTimeMillis().toString()
         ))
+        onDataChanged()
         return ConfigImportResult.Success(config.version)
     }
 

@@ -7,6 +7,7 @@ import com.salesquest.sales_quest.data.IdGenerator
 import com.salesquest.sales_quest.data.Operator
 import com.salesquest.sales_quest.data.entity.CustomerEntity
 import com.salesquest.sales_quest.services.AchievementService
+import com.salesquest.sales_quest.services.AutoBackupManager
 import com.salesquest.sales_quest.services.BackupService
 import com.salesquest.sales_quest.services.ConfigService
 import com.salesquest.sales_quest.services.DailyStatsService
@@ -57,6 +58,9 @@ object AppContainer {
     lateinit var webDavService: WebDavService
         private set
 
+    lateinit var autoBackupManager: AutoBackupManager
+        private set
+
     lateinit var dailySummaryService: DailySummaryService
         private set
 
@@ -70,16 +74,19 @@ object AppContainer {
         if (isInitialized) return
         db = AppDatabase.build(context)
         xpService = XpService(db)
-        dailyTaskService = DailyTaskService(db)
+        dailyTaskService = DailyTaskService(db) { autoBackupManager.markDirty() }
         achievementService = AchievementService(db)
-        quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService)
+        quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService) {
+            autoBackupManager.markDirty()
+        }
         dailyStatsService = DailyStatsService(db)
-        configService = ConfigService(db)
+        configService = ConfigService(db) { autoBackupManager.markDirty() }
         levelService = LevelService(db)
         backupService = BackupService(db)
         webDavConfigStore = WebDavConfigStore(context)
         webDavService = WebDavService(context, webDavConfigStore, backupService)
-        dailySummaryService = DailySummaryService(db)
+        autoBackupManager = AutoBackupManager(webDavService, webDavConfigStore)
+        dailySummaryService = DailySummaryService(db) { autoBackupManager.markDirty() }
         weeklySummaryService = WeeklySummaryService(db)
         isInitialized = true
         AppLogger.info("AppContainer", "服务初始化完成")
@@ -91,7 +98,9 @@ object AppContainer {
         xpService = XpService(db)
         dailyTaskService = DailyTaskService(db)
         achievementService = AchievementService(db)
-        quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService)
+        quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService) {
+            autoBackupManager.markDirty()
+        }
         dailyStatsService = DailyStatsService(db)
         configService = ConfigService(db)
         levelService = LevelService(db)
@@ -134,6 +143,7 @@ object AppContainer {
                 updatedAt = now
             )
             db.customerDao().updateCustomer(updated)
+            autoBackupManager.markDirty()
             return params.id
         } else {
             val name = if (params.name.isNullOrEmpty()) generateCustomerNumber() else params.name!!
@@ -158,12 +168,14 @@ object AppContainer {
                 updatedAt = now
             )
             db.customerDao().insertCustomer(customer)
+            autoBackupManager.markDirty()
             return customer.id
         }
     }
 
     suspend fun deleteCustomer(id: String) {
         db.customerDao().deleteCustomer(id)
+        autoBackupManager.markDirty()
     }
 }
 

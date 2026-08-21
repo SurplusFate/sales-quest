@@ -69,7 +69,10 @@ data class DailyTaskConfig(
  * 3. 当天产生数据后任务目标锁定, 不可修改
  * 4. 连续作战仅在全部基础任务完成时 +1
  */
-class DailyTaskService(private val db: AppDatabase) {
+class DailyTaskService(
+    private val db: AppDatabase,
+    private val onDataChanged: () -> Unit = {}
+) {
 
     // ==================== 默认配置 (用户偏好) ====================
 
@@ -176,6 +179,7 @@ class DailyTaskService(private val db: AppDatabase) {
 
         saveDefaultConfig(config)
         rebuildDayTasks(time, config)
+        onDataChanged()
     }
 
     /** 不再锁定任务 (P1 变更: 允许当天修改目标, 防重复奖励由 XpService 保证) */

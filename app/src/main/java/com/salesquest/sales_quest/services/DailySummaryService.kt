@@ -25,7 +25,10 @@ data class DailySummary(
  * 总结绑定具体日期 (dateKey), 支持历史日期查看/编辑。
  * 总结只反映数据, 不产生 XP / 任务 / 成就。
  */
-class DailySummaryService(private val db: AppDatabase) {
+class DailySummaryService(
+    private val db: AppDatabase,
+    private val onDataChanged: () -> Unit = {}
+) {
 
     /** 读取某天总结 */
     suspend fun getSummary(dateKey: String): DailySummary? {
@@ -45,6 +48,7 @@ class DailySummaryService(private val db: AppDatabase) {
                 updatedAt = System.currentTimeMillis()
             )
         )
+        onDataChanged()
     }
 
     /** 删除某天总结 */

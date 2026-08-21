@@ -14,6 +14,7 @@ import com.salesquest.sales_quest.data.DateUtil
  * 3. 检查全部基础任务是否完成 → 触发连续作战 +1 + 奖励 XP
  * 4. 如果成交不参与基础任务 → 发放成交额外 XP
  * 5. 检查成就解锁
+ * 6. 标记自动备份 dirty
  *
  * 变更 (P1):
  * - 单指标更新时校验销售漏斗, 防止非法数据
@@ -23,7 +24,8 @@ class QuickActionService(
     private val db: AppDatabase,
     private val xpService: XpService,
     private val taskService: DailyTaskService,
-    private val achievementService: AchievementService
+    private val achievementService: AchievementService,
+    private val onDataChanged: () -> Unit = {}
 ) {
 
     suspend fun setPeopleSeen(count: Int) {
@@ -114,6 +116,9 @@ class QuickActionService(
             achievementService.checkAndUnlock()
         } catch (e: Exception) {
             AppLogger.error("QuickActionService", "postUpdate 失败: $e", e.stackTraceToString())
+        } finally {
+            // 无论 postUpdate 是否异常, 数据已写入, 标记自动备份
+            onDataChanged()
         }
     }
 }
