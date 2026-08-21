@@ -58,3 +58,24 @@ Entries discovered by the Agent during task execution should follow this format:
   - Android 构建环境: JDK 17 (/usr/lib/jvm/java-17-openjdk-amd64), Android SDK (/opt/android-sdk, platforms;android-35 + build-tools;35.0.0), Gradle 8.9 (/opt/gradle/gradle-8.9, 需 export PATH=/opt/gradle/gradle-8.9/bin:$PATH)。
   - 需 export ANDROID_HOME=/opt/android-sdk, JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64。
   - 旧 Flutter 源码已归档到 legacy/ 目录 (lib/test/web/android/pubspec 等)，重构参考逻辑读取 legacy/。
+
+[Project Knowledge Summary]
+- Date: 2026-08-19
+- Context: Discovered by Agent while adding v2 features (晋级条件/配置导入导出/WebDAV备份/总结)
+- Category: Build Methods
+- Instructions:
+  - 编译校验: `gradle compileDebugKotlin --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m"`；构建: `gradle assembleDebug`（后台终端执行，约 3 分钟）。
+  - 单元测试: `gradle testDebugUnitTest --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m"`；新增测试用 Robolectric + Room.inMemoryDatabaseBuilder + AppContainer.initForTest(db)。
+  - kotlinx.serialization 需在 app/build.gradle.kts 声明 `alias(libs.plugins.kotlin.serialization)` 插件，否则 `serializer()` 报 Unresolved reference。
+
+[Project Knowledge Summary]
+- Date: 2026-08-19
+- Context: Discovered by Agent while writing unit tests for v2 services
+- Category: Testing Methods
+- Instructions:
+  - Robolectric compose 测试中 LazyColumn 视口外的 item 不会被 compose（`assertIsDisplayed` 会失败），断言应选列表顶部 item（如"基础任务设置"）而非下方 item（如"坚果云 WebDAV"）。
+  - WebDAVService 的 parsePropfind/joinUrl/joinDir 为 internal，同包测试可直接实例化 WebDavService(context, WebDavConfigStore(context), BackupService(db)) 调用，无需 mock；EncryptedSharedPreferences 在 Robolectric 下自动降级普通 prefs。
+  - LevelService 的晋级判定：未配置条件的等级仅按 XP 门槛升级；测试若希望用"累计条件"阻止升级，需为所有更高等级都配置条件，否则 XP 会直接越过。
+  - kotlinx.serialization 的 Json 默认不编码有默认值的字段，导出配置 JSON 需 `encodeDefaults = true`（否则 version 字段缺失）。
+  - BackupServiceTest 中内存库 readDatabaseFileBytes() 返回 null，属预期，测试只断言数据级 JSON。
+

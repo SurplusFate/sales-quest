@@ -10,13 +10,12 @@ import com.salesquest.sales_quest.ui.BattleStats
 import com.salesquest.sales_quest.ui.HomeUiState
 import com.salesquest.sales_quest.ui.WeekDayStats
 import com.salesquest.sales_quest.services.DailyTaskConfig
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /**
  * 首页 ViewModel - 组合今日作战数据/任务/等级/连续作战
@@ -68,13 +67,9 @@ class HomeViewModel : ViewModel() {
         LevelService.buildProgress(requirements, totalXp, totalMeet, totalQuery, totalDeal, streakDays)
     }
 
-    private val configFlow = MutableStateFlow<DailyTaskConfig?>(null)
-
-    init {
-        viewModelScope.launch {
-            configFlow.value = AppContainer.dailyTaskService.getTodayConfig()
-        }
-    }
+    /** 今日任务配置响应式数据源: 配置修改 → settings 表 → Flow → 首页自动重组 */
+    private val configFlow: Flow<DailyTaskConfig> =
+        AppContainer.dailyTaskService.watchTodayConfig()
 
     // Kotlin combine 只支持 5 个有类型重载; 6 个流需嵌套
     private val statsTasksPair = combine(battleStatsFlow, tasksFlow) { stats, tasks -> stats to tasks }

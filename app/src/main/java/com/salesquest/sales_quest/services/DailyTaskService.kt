@@ -7,6 +7,9 @@ import com.salesquest.sales_quest.data.AppDatabase
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.data.IdGenerator
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
+import com.salesquest.sales_quest.data.entity.SettingEntity
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /** 每日任务配置 (用户自定义) */
 data class DailyTaskConfig(
@@ -111,15 +114,52 @@ class DailyTaskService(private val db: AppDatabase) {
             val defaultConfig = getDefaultConfig()
             return defaultConfig.copyConfig(locked = false, allCompleted = false)
         }
+        return buildConfigFromSettings(db.settingDao().getAll(), dateKey)
+    }
+
+    /**
+     * 响应式监听今天的任务配置。
+     *
+     * 配置修改 → settings 表写入 → watchAll 发出新值 → 首页自动重组。
+     * 首页直接使用本 Flow, 保证「显示目标 = 今日实际生效配置」始终一致。
+     */
+    fun watchTodayConfig(): Flow<DailyTaskConfig> {
+        return db.settingDao().watchAll().map { settings ->
+            buildConfigFromSettings(settings, DateUtil.dateKey())
+        }
+    }
+
+    /** 由 settings 快照构建某天配置 (供响应式数据源复用, 与 getDayConfig 语义一致) */
+    private fun buildConfigFromSettings(
+        settings: List<SettingEntity>,
+        dateKey: String
+    ): DailyTaskConfig {
+        val map = settings.associate { it.key to it.value }
+        val hasConfig = map[SettingsKeys.taskConfig(dateKey, "meet_target")] != null
+        if (!hasConfig) {
+            return DailyTaskConfig(
+                meetTarget = map[SettingsKeys.DEFAULT_MEET_TARGET]?.toIntOrNull()
+                    ?: DefaultTaskConfig.recommendedMeetTarget,
+                queryTarget = map[SettingsKeys.DEFAULT_QUERY_TARGET]?.toIntOrNull()
+                    ?: DefaultTaskConfig.recommendedQueryTarget,
+                dealTarget = map[SettingsKeys.DEFAULT_DEAL_TARGET]?.toIntOrNull()
+                    ?: DefaultTaskConfig.recommendedDealTarget,
+                includeMeet = map[SettingsKeys.DEFAULT_INCLUDE_MEET] == "1",
+                includeQuery = map[SettingsKeys.DEFAULT_INCLUDE_QUERY] == "1",
+                includeDeal = map[SettingsKeys.DEFAULT_INCLUDE_DEAL] == "1",
+                locked = false,
+                allCompleted = false
+            )
+        }
         return DailyTaskConfig(
-            meetTarget = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "meet_target")),
-            queryTarget = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "query_target")),
-            dealTarget = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "deal_target")),
-            includeMeet = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "include_meet")) != 0,
-            includeQuery = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "include_query")) != 0,
-            includeDeal = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "include_deal")) != 0,
-            locked = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "locked")) != 0,
-            allCompleted = db.settingDao().getInt(SettingsKeys.taskConfig(dateKey, "all_completed")) != 0
+            meetTarget = map[SettingsKeys.taskConfig(dateKey, "meet_target")]?.toIntOrNull() ?: 0,
+            queryTarget = map[SettingsKeys.taskConfig(dateKey, "query_target")]?.toIntOrNull() ?: 0,
+            dealTarget = map[SettingsKeys.taskConfig(dateKey, "deal_target")]?.toIntOrNull() ?: 0,
+            includeMeet = map[SettingsKeys.taskConfig(dateKey, "include_meet")] == "1",
+            includeQuery = map[SettingsKeys.taskConfig(dateKey, "include_query")] == "1",
+            includeDeal = map[SettingsKeys.taskConfig(dateKey, "include_deal")] == "1",
+            locked = map[SettingsKeys.taskConfig(dateKey, "locked")] == "1",
+            allCompleted = map[SettingsKeys.taskConfig(dateKey, "all_completed")] == "1"
         )
     }
 
