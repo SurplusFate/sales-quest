@@ -14,6 +14,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -128,6 +129,69 @@ class WebDavServiceUnitTest {
             </d:multistatus>
         """.trimIndent()
         assertEquals("", service.parsePropfind(xml))
+    }
+
+    // ==================== 旧备份清理 ====================
+
+    private fun backupName(offsetDays: Long): String {
+        val t = System.currentTimeMillis() - offsetDays * 24 * 60 * 60 * 1000
+        return "sales_quest_backup_" +
+            java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US)
+                .format(java.util.Date(t)) +
+            ".db.zip"
+    }
+
+    private val cutoff30Days: Long
+        get() = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
+
+    @Test
+    fun parseBackupTimestamp_解析标准文件名() {
+        val parsed = service.parseBackupTimestamp("sales_quest_backup_2026-08-19_120000.db.zip")
+        assertNotNull(parsed)
+        val formatted = java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss", java.util.Locale.US)
+            .format(java.util.Date(parsed!!))
+        assertEquals("2026-08-19_120000", formatted)
+    }
+
+    @Test
+    fun parseBackupTimestamp_无效名称返回null() {
+        assertNull(service.parseBackupTimestamp("other_file.txt"))
+        assertNull(service.parseBackupTimestamp("sales_quest_backup_badname.db.zip"))
+        assertNull(service.parseBackupTimestamp(""))
+        assertNull(service.parseBackupTimestamp("sales_quest_backup_2026-08-19_120000.db"))
+    }
+
+    @Test
+    fun selectFilesToDelete_删除超期保留最新() {
+        val old1 = backupName(45)
+        val old2 = backupName(40)
+        val recent = backupName(5)
+        val toDelete = service.selectFilesToDelete(listOf(old1, old2, recent), cutoff30Days)
+        assertEquals(listOf(old1, old2), toDelete)
+    }
+
+    @Test
+    fun selectFilesToDelete_全部超期时保留最近一份() {
+        val older = backupName(60)
+        val newest = backupName(40)
+        val toDelete = service.selectFilesToDelete(listOf(older, newest), cutoff30Days)
+        assertEquals(listOf(older), toDelete)
+    }
+
+    @Test
+    fun selectFilesToDelete_仅一份备份不删除() {
+        val single = backupName(100)
+        assertEquals(emptyList<String>(), service.selectFilesToDelete(listOf(single), cutoff30Days))
+    }
+
+    @Test
+    fun selectFilesToDelete_无法解析的文件不删除() {
+        val recent = backupName(5)
+        val weird = "other_file.txt"
+        assertEquals(
+            emptyList<String>(),
+            service.selectFilesToDelete(listOf(recent, weird), cutoff30Days)
+        )
     }
 
     // ==================== 错误信息非空验证 ====================

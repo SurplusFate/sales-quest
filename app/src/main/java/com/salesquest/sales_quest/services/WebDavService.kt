@@ -137,6 +137,18 @@ open class WebDavService(
     private val jsonMediaType = "application/xml; charset=utf-8".toMediaType()
     private val octetMediaType = "application/octet-stream".toMediaType()
 
+    /** 旧备份保留策略: 超过 30 天的旧备份自动删除, 始终保留最近 1 份 */
+    private val backupRetentionMs = 30L * 24 * 60 * 60 * 1000
+
+    private val backupNameRegex = Regex(
+        Regex.escape(BackupKeys.BACKUP_FILENAME_PREFIX) +
+            "(\\d{4}-\\d{2}-\\d{2}_\\d{6})" +
+            Regex.escape(BackupKeys.DB_BACKUP_SUFFIX) + "\\.zip"
+    )
+    private val backupTimeFormat = java.text.SimpleDateFormat(
+        "yyyy-MM-dd_HHmmss", java.util.Locale.US
+    )
+
     // ==================== 连接 ====================
 
     /**
@@ -269,7 +281,12 @@ open class WebDavService(
                         resp.code in 200..299 -> {
                             configStore.setLastBackupAt(System.currentTimeMillis())
                             configStore.save(config)
-                            WebDavResult.Success("备份成功: $filename")
+                            val cleanupMsg = when (val cleanup = cleanupOldBackups(config)) {
+                                is WebDavResult.Success -> cleanup.message
+                                is WebDavResult.Failure -> cleanup.message
+                            }
+                            val suffix = if (cleanupMsg.isNotBlank()) "\n$cleanupMsg" else ""
+                            WebDavResult.Success("备份成功: $filename$suffix")
                         }
                         resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
                         resp.code == 409 -> WebDavResult.Failure("远程目录不存在, 请先手动创建")
@@ -335,6 +352,78 @@ open class WebDavService(
             }
         }
         return files.joinToString("\n") { it.name }
+    }
+
+    // ==================== 旧备份清理 ====================
+
+    /** 从备份文件名解析备份时间戳 (毫秒), 无法解析返回 null */
+    internal fun parseBackupTimestamp(name: String): Long? {
+        val m = backupNameRegex.matchEntire(name) ?: return null
+        return runCatching { backupTimeFormat.parse(m.groupValues[1])?.time }.getOrNull()
+    }
+
+    /**
+     * 计算需要删除的旧备份文件
+     * @param names 远程备份文件名列表
+     * @param cutoff 时间阈值, 早于该时间的文件被删除 (毫秒)
+     * @return 需要删除的文件名; 始终保留最近 1 份
+     */
+    internal fun selectFilesToDelete(names: List<String>, cutoff: Long): List<String> {
+        val timed = names.mapNotNull { name -> parseBackupTimestamp(name)?.let { name to it } }
+        if (timed.size <= 1) return emptyList()
+        val newestName = timed.maxByOrNull { it.second }?.first ?: return emptyList()
+        return timed.filter { it.first != newestName && it.second < cutoff }.map { it.first }
+    }
+
+    /**
+     * 清理旧备份: 删除超过 30 天的备份文件, 始终保留最近 1 份
+     * 在每次备份成功后自动调用
+     */
+    open suspend fun cleanupOldBackups(config: WebDavConfig = configStore.load()): WebDavResult {
+        if (!config.isConfigured()) return WebDavResult.Success()
+
+        val names = when (val listResult = listBackups(config)) {
+            is WebDavResult.Success -> listResult.message.split("\n").filter { it.isNotBlank() }
+            is WebDavResult.Failure -> return listResult
+        }
+        if (names.size <= 1) return WebDavResult.Success()
+
+        val cutoff = System.currentTimeMillis() - backupRetentionMs
+        val toDelete = selectFilesToDelete(names, cutoff)
+        if (toDelete.isEmpty()) return WebDavResult.Success()
+
+        var failed = 0
+        for (name in toDelete) {
+            if (deleteFile(name, config) is WebDavResult.Failure) failed++
+        }
+        return if (failed == 0) {
+            WebDavResult.Success("已自动清理 ${toDelete.size} 个 30 天前旧备份")
+        } else {
+            WebDavResult.Failure("旧备份清理部分失败 ($failed/${toDelete.size})")
+        }
+    }
+
+    /** 删除远程备份文件 */
+    private suspend fun deleteFile(filename: String, config: WebDavConfig): WebDavResult {
+        return withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url(joinUrl(config.url, joinDir(config.dir, filename)))
+                .delete()
+                .header("Authorization", Credentials.basic(config.username, config.password))
+                .build()
+            runCatching {
+                client.newCall(request).execute().use { resp ->
+                    when {
+                        resp.code in 200..299 || resp.code == 404 -> WebDavResult.Success()
+                        resp.code == 401 -> WebDavResult.Failure("认证失败, 请检查用户名/应用密码")
+                        else -> WebDavResult.Failure("删除失败: HTTP ${resp.code}")
+                    }
+                }
+            }.getOrElse {
+                val errMsg = it.message ?: it.javaClass.simpleName
+                WebDavResult.Failure("网络错误: $errMsg")
+            }
+        }
     }
 
     // ==================== 恢复 ====================
