@@ -14,7 +14,10 @@ import com.salesquest.sales_quest.ui.BattleStats
  * 3. 数据校验: 0 <= 成交 <= 查询 <= 见人, 不允许负数
  * 4. 所有写操作使用 Transaction, 防止并发更新时旧数据覆盖新数据
  */
-class DailyStatsService(private val db: AppDatabase) {
+class DailyStatsService(
+    private val db: AppDatabase,
+    private val onDataChanged: () -> Unit = {}
+) {
 
     /** 读取某天数据 */
     suspend fun getDailyStats(dateKey: String): BattleStats = BattleStats(
@@ -41,6 +44,7 @@ class DailyStatsService(private val db: AppDatabase) {
             db.settingDao().setInt(SettingsKeys.deals(dateKey), deals)
             recalculateTotals()
         }
+        onDataChanged()
     }
 
     /**
@@ -59,6 +63,7 @@ class DailyStatsService(private val db: AppDatabase) {
             }
             recalculateTotals()
         }
+        onDataChanged()
     }
 
     /**

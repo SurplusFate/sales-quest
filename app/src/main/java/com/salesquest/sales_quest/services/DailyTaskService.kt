@@ -379,5 +379,6 @@ class DailyTaskService(
 
         // 删除今日任务行 (执行度归零, 下次记录时自动重建)
         db.taskDao().deleteByDate(dateKey)
+        onDataChanged()
     }
 }

@@ -51,12 +51,14 @@ Entries discovered by the Agent during task execution should follow this format:
   - 网页加载后 canvaskit 会动态创建 3 次 canvas 并获取 webgl2 上下文，这是正常初始化流程。
 
 [Project Knowledge Summary]
-- Date: 2026-08-16
-- Context: Discovered by Agent while performing Flutter → Android 原生重构
-- Category: Environment Configuration
+- Date: 2026-08-27
+- Context: Discovered by Agent while diagnosing "新增数据不触发自动备份" 并搭建构建环境
+- Category: Build Methods
 - Instructions:
-  - Android 构建环境: JDK 17 (/usr/lib/jvm/java-17-openjdk-amd64), Android SDK (/opt/android-sdk, platforms;android-35 + build-tools;35.0.0), Gradle 8.9 (/opt/gradle/gradle-8.9, 需 export PATH=/opt/gradle/gradle-8.9/bin:$PATH)。
-  - 需 export ANDROID_HOME=/opt/android-sdk, JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64。
+  - 当前沙箱构建环境: JDK 17 需 `apt-get install -y openjdk-17-jdk-headless` (/usr/lib/jvm/java-17-openjdk-amd64)；Android SDK 需手动下载 commandlinetools 安装到 /opt/android-sdk (platforms;android-35 + build-tools;34.0.0/35.0.0)，并在 /workspace/local.properties 写 `sdk.dir=/opt/android-sdk`。
+  - gradle.properties 内置代理 systemProp http(s).proxyHost=127.0.0.1:18080，该代理当前环境未运行会致 gradle 全部网络下载失败 (AGP 解析 "could not resolve")；构建前需临时注释这 4 行，构建后还原。
+  - services.gradle.org 对 Java 直连 Connection refused 但 curl 可达；wrapper 发行版 gradle-8.11.1 手动下载到 ~/.gradle/wrapper/dists/<hash>/ 并 touch gradle-8.11.1.ok 后可直接用 `~/.gradle/wrapper/dists/<hash>/gradle-8.11.1/bin/gradle` 执行。
+  - 单元测试: `gradle :app:testDebugUnitTest`（首次下载依赖约 12 分钟，后续快）；WeekStatsTest 的「首页本周战绩与DailyStatsService数据一致」「首页修改数据后本周战绩自动刷新」两个用例在无改动时也失败 (expected X but was 0)，属既有问题与本次代码无关。
   - 旧 Flutter 源码已归档到 legacy/ 目录 (lib/test/web/android/pubspec 等)，重构参考逻辑读取 legacy/。
 
 [Project Knowledge Summary]

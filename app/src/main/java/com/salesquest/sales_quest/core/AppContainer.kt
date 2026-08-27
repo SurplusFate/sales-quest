@@ -80,7 +80,7 @@ object AppContainer {
         quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService) {
             autoBackupManager.markDirty()
         }
-        dailyStatsService = DailyStatsService(db)
+        dailyStatsService = DailyStatsService(db) { autoBackupManager.markDirty() }
         configService = ConfigService(db) { autoBackupManager.markDirty() }
         levelService = LevelService(db)
         backupService = BackupService(db)

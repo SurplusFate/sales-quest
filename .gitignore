@@ -35,7 +35,10 @@ local.properties
 !releases/*.apk
 *.keystore
 !debug.keystore
-# 签名配置文件 (含密码, 禁止提交)
+*.jks
+!*.jks
+# 签名配置文件 (含密码) —— 按用户要求保存到仓库, 以便跨环境重建一致签名
 keystore.properties
+!keystore.properties
 linux/
 android/
