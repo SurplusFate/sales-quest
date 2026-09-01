@@ -67,6 +67,7 @@ Entries discovered by the Agent during task execution should follow this format:
 - Category: Build Methods
 - Instructions:
   - 编译校验: `gradle compileDebugKotlin --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m"`；构建: `gradle assembleDebug`（后台终端执行，约 3 分钟）。
+  - `assembleRelease`（2026-09-01 实测）：后台终端 memory_percent 需 ≥65%（~5G），40% 会 OOM 被杀（cgroup oom_killed，Gradle daemon disappeared，R8/D8 dex 峰值 ~3.2G）；建议加 `--max-workers=2 --no-daemon`。产物 app/build/outputs/apk/release/app-release.apk，用 aapt dump badging 校验版本后复制到 releases/sales-quest-v<ver>-release.apk。
   - 单元测试: `gradle testDebugUnitTest --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m"`；新增测试用 Robolectric + Room.inMemoryDatabaseBuilder + AppContainer.initForTest(db)。
   - kotlinx.serialization 需在 app/build.gradle.kts 声明 `alias(libs.plugins.kotlin.serialization)` 插件，否则 `serializer()` 报 Unresolved reference。
 
