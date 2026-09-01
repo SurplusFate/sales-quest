@@ -11,6 +11,7 @@ import com.salesquest.sales_quest.data.dao.AchievementDao
 import com.salesquest.sales_quest.data.dao.CustomerDao
 import com.salesquest.sales_quest.data.dao.DailySummaryDao
 import com.salesquest.sales_quest.data.dao.EventDao
+import com.salesquest.sales_quest.data.dao.ExecutionRecordDao
 import com.salesquest.sales_quest.data.dao.FollowUpDao
 import com.salesquest.sales_quest.data.dao.LevelRequirementDao
 import com.salesquest.sales_quest.data.dao.SettingDao
@@ -22,6 +23,7 @@ import com.salesquest.sales_quest.data.entity.CustomerEntity
 import com.salesquest.sales_quest.data.entity.CustomerEventEntity
 import com.salesquest.sales_quest.data.entity.DailySummaryEntity
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
+import com.salesquest.sales_quest.data.entity.ExecutionRecordEntity
 import com.salesquest.sales_quest.data.entity.FollowUpEntity
 import com.salesquest.sales_quest.data.entity.LevelRequirementEntity
 import com.salesquest.sales_quest.data.entity.SettingEntity
@@ -39,9 +41,10 @@ import com.salesquest.sales_quest.data.entity.XpRecordEntity
         AchievementEntity::class,
         SettingEntity::class,
         LevelRequirementEntity::class,
-        DailySummaryEntity::class
+        DailySummaryEntity::class,
+        ExecutionRecordEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -56,6 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun settingDao(): SettingDao
     abstract fun levelRequirementDao(): LevelRequirementDao
     abstract fun dailySummaryDao(): DailySummaryDao
+    abstract fun executionRecordDao(): ExecutionRecordDao
 
     /** 清空所有数据并重置统计 (设置页-清除所有数据) */
     suspend fun clearAllData() {
@@ -69,6 +73,7 @@ abstract class AppDatabase : RoomDatabase() {
             settingDao().clearAll()
             levelRequirementDao().clearAll()
             dailySummaryDao().clearAll()
+            executionRecordDao().clearAll()
             statsDao().updateStats(
                 totalXp = 0,
                 currentLevel = 1,
@@ -80,7 +85,7 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION = 3
+        const val VERSION = 4
         const val DB_NAME = "sales_quest.db"
 
         /** v1 → v2: 新增 level_requirements 与 daily_summaries 表 */
@@ -114,14 +119,37 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE customers ADD COLUMN customerNumber TEXT")
                 db.execSQL("CREATE UNIQUE INDEX index_customers_customerNumber ON customers(customerNumber) WHERE customerNumber IS NOT NULL")
-                // 回填: name 形如 #NNN 的记录将其同步到 customerNumber
                 db.execSQL("UPDATE customers SET customerNumber = name WHERE name LIKE '#%' AND customerNumber IS NULL")
+            }
+        }
+
+        /** v3 → v4: 新增 execution_records 表 (分段执行记录) */
+        val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `execution_records` (" +
+                        "`id` TEXT NOT NULL, " +
+                        "`dateKey` TEXT NOT NULL, " +
+                        "`recordTime` INTEGER, " +
+                        "`timePrecision` TEXT NOT NULL, " +
+                        "`periodLabel` TEXT, " +
+                        "`peopleSeen` INTEGER NOT NULL, " +
+                        "`queries` INTEGER NOT NULL, " +
+                        "`deals` INTEGER NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL, " +
+                        "`updatedAt` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_execution_records_dateKey` " +
+                        "ON `execution_records` (`dateKey`)"
+                )
             }
         }
 
         fun build(context: Context): AppDatabase {
             return Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
     }

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -61,6 +62,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AnalyticsPage(
     onOpenSummary: () -> Unit = {},
+    onOpenExecutionRecords: () -> Unit = {},
     viewModel: AnalyticsViewModel = viewModel()
 ) {
     val total by viewModel.total.collectAsState()
@@ -139,6 +141,31 @@ fun AnalyticsPage(
                 onEditDeals = { editRequest = EditMetricRequest("成交数", deals, "单", "DEAL", selectedDateKey.value) }
             )
             Spacer(Modifier.height(16.dp))
+
+            // === 执行记录入口 ===
+            SectionTitle("执行记录")
+            Spacer(Modifier.height(8.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onOpenExecutionRecords)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Timeline, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("分段执行记录", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text("查看/补录当天分段数据", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
 
             // === 转化率区域 ===
             SectionTitle("转化率")

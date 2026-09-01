@@ -119,4 +119,7 @@ object DateUtil {
             set(parts[0], parts[1] - 1, parts[2])
         }
     }
+
+    /** dateKey → Calendar (公开, 供 UI 层组合日期+时间使用) */
+    fun parseDateKeyToCalendar(dateKey: String): Calendar = parseDateKey(dateKey)
 }

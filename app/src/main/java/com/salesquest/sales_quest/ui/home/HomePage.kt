@@ -25,9 +25,11 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -66,6 +68,7 @@ import com.salesquest.sales_quest.data.entity.DailyTaskEntity
 import com.salesquest.sales_quest.services.DailyTaskConfig
 import com.salesquest.sales_quest.services.LevelProgress
 import com.salesquest.sales_quest.ui.BattleStats
+import com.salesquest.sales_quest.ui.ExecutionRecordUi
 import com.salesquest.sales_quest.ui.HomeUiState
 import com.salesquest.sales_quest.ui.WeekDayStats
 import kotlinx.coroutines.launch
@@ -80,6 +83,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomePage(
     onNavigateToTaskConfig: () -> Unit = {},
+    onViewAllExecutionRecords: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -87,6 +91,7 @@ fun HomePage(
     val scope = rememberCoroutineScope()
     var editMetric by remember { mutableStateOf<EditMetricRequest?>(null) }
     var showDailyEntry by remember { mutableStateOf(false) }
+    var showExecRecordSheet by remember { mutableStateOf(false) }
 
     Box {
         Column(
@@ -108,6 +113,14 @@ fun HomePage(
                 stats = state.stats,
                 onRecordData = { showDailyEntry = true },
                 onEditMetric = { req -> editMetric = req }
+            )
+            Spacer(Modifier.height(16.dp))
+
+            // 今日执行记录: 分段记录
+            ExecutionRecordsSection(
+                records = state.executionRecords,
+                onAddRecord = { showExecRecordSheet = true },
+                onViewAll = onViewAllExecutionRecords
             )
             Spacer(Modifier.height(16.dp))
 
@@ -153,6 +166,15 @@ fun HomePage(
             sheetState = rememberModalBottomSheetState()
         ) {
             QuickActionSheet(onDone = { showDailyEntry = false })
+        }
+    }
+
+    if (showExecRecordSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showExecRecordSheet = false },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            ExecutionRecordSheet(onDone = { showExecRecordSheet = false })
         }
     }
 }
@@ -526,5 +548,109 @@ fun EmptyTaskCard(config: DailyTaskConfig?) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+/** 今日执行记录区域 — 轻量展示最近几条分段记录 */
+@Composable
+private fun ExecutionRecordsSection(
+    records: List<ExecutionRecordUi>,
+    onAddRecord: () -> Unit,
+    onViewAll: () -> Unit
+) {
+    // 标题行
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "今日执行记录",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        if (records.isNotEmpty()) {
+            TextButton(onClick = onViewAll) {
+                Text("查看全部", style = MaterialTheme.typography.labelMedium)
+            }
+            Spacer(Modifier.width(4.dp))
+        }
+        TextButton(onClick = onAddRecord) {
+            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("记录", style = MaterialTheme.typography.labelLarge)
+        }
+    }
+    Spacer(Modifier.height(4.dp))
+
+    if (records.isEmpty()) {
+        // 空状态: 轻量提示
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .clickable(onClick = onAddRecord)
+                .padding(horizontal = 14.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.Timeline, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "还没有执行记录, 点击添加今日第一条",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(18.dp))
+        }
+    } else {
+        // 显示最近 4 条 (倒序, 最新在上)
+        val display = records.takeLast(4).reversed()
+        display.forEachIndexed { index, record ->
+            ExecutionRecordCompactRow(record = record)
+            if (index < display.size - 1) {
+                Spacer(Modifier.height(2.dp))
+            }
+        }
+        if (records.size > 4) {
+            Spacer(Modifier.height(2.dp))
+            TextButton(onClick = onViewAll, modifier = Modifier.fillMaxWidth()) {
+                Text("查看全部 ${records.size} 条", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+}
+
+/** 紧凑执行记录行 — 首页轻量展示 */
+@Composable
+private fun ExecutionRecordCompactRow(record: ExecutionRecordUi) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 时间标签
+        Text(
+            record.timeLabel,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.width(56.dp)
+        )
+        // 三个增量数据
+        CompactDelta("+${record.peopleSeen}", "见", Color(0xFF2196F3), Modifier.weight(1f))
+        CompactDelta("+${record.queries}", "查", Color(0xFF9C27B0), Modifier.weight(1f))
+        CompactDelta("+${record.deals}", "成", Color(0xFFF44336), Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun CompactDelta(value: String, label: String, color: Color, modifier: Modifier = Modifier) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = color)
+        Spacer(Modifier.width(2.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

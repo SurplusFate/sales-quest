@@ -12,6 +12,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * 自动备份管理器 — 数据变化触发 + 防抖延迟 + 版本号并发控制
@@ -21,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * 2. 延迟到期 → 检查条件 → 记录备份版本 → 上传 → 比较版本 → 决定是否标记完成
  * 3. 失败时保持 dirty=true, 下次数据变化时重新触发
  *
- * 线程安全: markDirty() 可从任意线程调用, 内部用 Mutex 保证备份执行串行化
+ * 线程安全: markDirty() 可从任意线程调用, delayJob 使用 AtomicReference 保证原子替换
  */
 class AutoBackupManager(
     private val webDavService: WebDavService,
@@ -41,8 +42,8 @@ class AutoBackupManager(
     /** 数据变化版本号 (每次 markDirty 递增) */
     private val dataChangeVersion = AtomicInteger(0)
 
-    /** 当前延迟任务 */
-    private var delayJob: Job? = null
+    /** 当前延迟任务 (AtomicReference 保证并发 markDirty 时不会丢失任务引用) */
+    private val delayJobRef = AtomicReference<Job?>(null)
 
     /** 备份执行锁 (保证同一时间只有一个备份在执行) */
     private val backupMutex = Mutex()
@@ -72,20 +73,27 @@ class AutoBackupManager(
      * delayMs <= 0 (测试): 仅更新状态, 不启动后台协程 (由 triggerBackupNowForTest 控制)
      */
     fun markDirty() {
-        if (!configStore.load().autoBackup) return
-        if (!configStore.isConfigured()) return
+        try {
+            val config = configStore.load()
+            if (!config.autoBackup) return
+            if (!config.isConfigured()) return
+        } catch (e: Exception) {
+            AppLogger.error("AutoBackupManager", "读取备份配置失败: ${e.message}")
+            return
+        }
 
         dirty.set(true)
         val version = dataChangeVersion.incrementAndGet()
         AppLogger.info("AutoBackupManager", "markDirty: version=$version, dirty=true")
 
-        // 取消旧的延迟任务, 启动新的
-        delayJob?.cancel()
+        // 取消旧的延迟任务, 启动新的 (原子替换, 保证并发安全)
         if (delayMs > 0) {
-            delayJob = scope.launch {
+            val newJob = scope.launch {
                 delay(delayMs)
                 executeBackup()
             }
+            val oldJob = delayJobRef.getAndSet(newJob)
+            oldJob?.cancel()
         }
     }
 
@@ -113,7 +121,7 @@ class AutoBackupManager(
                 lastBackupResult = BackupOutcome.Skipped
                 return
             }
-            if (!configStore.isConfigured()) {
+            if (!config.isConfigured()) {
                 lastBackupResult = BackupOutcome.Skipped
                 return
             }
@@ -148,7 +156,7 @@ class AutoBackupManager(
             }
         } catch (e: Exception) {
             lastBackupResult = BackupOutcome.Failure(e.message ?: e.javaClass.simpleName)
-            AppLogger.error("AutoBackupManager", "备份异常: ${e.message}")
+            AppLogger.error("AutoBackupManager", "备份异常: ${e.message}", e.stackTraceToString())
             // dirty 保持 true
         } finally {
             backupMutex.unlock()
@@ -157,24 +165,25 @@ class AutoBackupManager(
 
     /** 重新安排延迟备份 (备份期间产生新数据时) */
     private fun scheduleNextBackup() {
-        delayJob?.cancel()
         if (delayMs > 0) {
-            delayJob = scope.launch {
+            val newJob = scope.launch {
                 delay(delayMs)
                 executeBackup()
             }
+            val oldJob = delayJobRef.getAndSet(newJob)
+            oldJob?.cancel()
         }
     }
 
     /** 仅供测试: 直接触发备份 (跳过延迟, 取消挂起的后台任务) */
     suspend fun triggerBackupNowForTest() {
         // 取消 markDirty 启动的延迟备份, 避免与测试直接触发的备份竞争
-        delayJob?.cancel()
-        delayJob = null
+        val oldJob = delayJobRef.getAndSet(null)
+        oldJob?.cancel()
         executeBackup()
         // 取消 executeBackup 中 scheduleNextBackup 可能启动的后台任务
-        delayJob?.cancel()
-        delayJob = null
+        val pendingJob = delayJobRef.getAndSet(null)
+        pendingJob?.cancel()
     }
 
     /** 仅供测试: 获取当前 dirty 状态 */
@@ -193,8 +202,8 @@ class AutoBackupManager(
     fun resetForTest() {
         dirty.set(false)
         dataChangeVersion.set(0)
-        delayJob?.cancel()
-        delayJob = null
+        val oldJob = delayJobRef.getAndSet(null)
+        oldJob?.cancel()
         backupExecutionCount = 0
         lastBackupResult = null
     }
@@ -209,7 +218,8 @@ class AutoBackupManager(
 
     /** 释放资源 */
     fun shutdown() {
-        delayJob?.cancel()
+        val oldJob = delayJobRef.getAndSet(null)
+        oldJob?.cancel()
         scope.cancel()
     }
 }

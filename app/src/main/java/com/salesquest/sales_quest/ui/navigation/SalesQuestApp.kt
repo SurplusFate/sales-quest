@@ -24,6 +24,7 @@ import com.salesquest.sales_quest.ui.customers.CustomerListPage
 import com.salesquest.sales_quest.ui.data.AnalyticsPage
 import com.salesquest.sales_quest.ui.dev.LogViewerPage
 import com.salesquest.sales_quest.ui.home.HomePage
+import com.salesquest.sales_quest.ui.home.ExecutionRecordListPage
 import com.salesquest.sales_quest.ui.settings.ConfigPage
 import com.salesquest.sales_quest.ui.settings.SettingsPage
 import com.salesquest.sales_quest.ui.settings.TaskConfigPage
@@ -78,7 +79,8 @@ fun SalesQuestApp() {
             // 底部 4 tab
             composable("home") {
                 HomePage(
-                    onNavigateToTaskConfig = { navController.navigate("settings/task-config") }
+                    onNavigateToTaskConfig = { navController.navigate("settings/task-config") },
+                    onViewAllExecutionRecords = { navController.navigate("execution-records") }
                 )
             }
             composable("customers") {
@@ -89,7 +91,8 @@ fun SalesQuestApp() {
             }
             composable("data") {
                 AnalyticsPage(
-                    onOpenSummary = { navController.navigate("summary") }
+                    onOpenSummary = { navController.navigate("summary") },
+                    onOpenExecutionRecords = { navController.navigate("execution-records") }
                 )
             }
             composable("achievements") {
@@ -146,6 +149,9 @@ fun SalesQuestApp() {
             }
             composable("summary") {
                 SummaryPage(onBack = { navController.popBackStack() })
+            }
+            composable("execution-records") {
+                ExecutionRecordListPage(onBack = { navController.popBackStack() })
             }
             composable("dev/logs") {
                 LogViewerPage(onBack = { navController.popBackStack() })

@@ -7,6 +7,7 @@ import com.salesquest.sales_quest.data.entity.CustomerEntity
 import com.salesquest.sales_quest.data.entity.CustomerEventEntity
 import com.salesquest.sales_quest.data.entity.DailySummaryEntity
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
+import com.salesquest.sales_quest.data.entity.ExecutionRecordEntity
 import com.salesquest.sales_quest.data.entity.FollowUpEntity
 import com.salesquest.sales_quest.data.entity.LevelRequirementEntity
 import com.salesquest.sales_quest.data.entity.SettingEntity
@@ -48,7 +49,10 @@ class BackupService(private val db: AppDatabase) {
             userStats = db.statsDao().getStats()?.let { listOf(it.toBackup()) } ?: emptyList(),
             achievements = db.achievementDao().getAll().map { it.toBackup() },
             levelRequirements = db.levelRequirementDao().getAll().map { it.toBackup() },
-            dailySummaries = db.dailySummaryDao().getAll().map { it.toBackup() }
+            dailySummaries = db.dailySummaryDao().getAll().map { it.toBackup() },
+            executionRecords = db.executionRecordDao().getAllDates()
+                .flatMap { date -> db.executionRecordDao().getByDate(date) }
+                .map { it.toBackup() }
         )
     }
 
@@ -167,6 +171,7 @@ class BackupService(private val db: AppDatabase) {
             db.achievementDao().clearAll()
             db.levelRequirementDao().clearAll()
             db.dailySummaryDao().clearAll()
+            db.executionRecordDao().clearAll()
 
             data.settings.forEach { db.settingDao().set(SettingEntity(it.key, it.value)) }
             data.customers.forEach { db.customerDao().insertCustomer(it.toEntity()) }
@@ -178,6 +183,7 @@ class BackupService(private val db: AppDatabase) {
             data.achievements.forEach { db.achievementDao().unlock(it.toEntity()) }
             data.levelRequirements.forEach { db.levelRequirementDao().insert(it.toEntity()) }
             data.dailySummaries.forEach { db.dailySummaryDao().upsert(it.toEntity()) }
+            data.executionRecords.forEach { db.executionRecordDao().insert(it.toEntity()) }
         }
 
         return RestoreStats(
@@ -262,6 +268,13 @@ private fun DailySummaryEntity.toBackup() = BackupDailySummary(
     improvement = improvement, updatedAt = updatedAt
 )
 
+private fun ExecutionRecordEntity.toBackup() = BackupExecutionRecord(
+    id = id, dateKey = dateKey, recordTime = recordTime,
+    timePrecision = timePrecision, periodLabel = periodLabel,
+    peopleSeen = peopleSeen, queries = queries, deals = deals,
+    createdAt = createdAt, updatedAt = updatedAt
+)
+
 // ==================== DTO → 实体 ====================
 
 private fun BackupCustomer.toEntity() = CustomerEntity(
@@ -314,4 +327,11 @@ private fun BackupDailySummary.toEntity() = DailySummaryEntity(
     dateKey = dateKey, good = good, problems = problems,
     customerFeedback = customerFeedback, discovery = discovery,
     improvement = improvement, updatedAt = updatedAt
+)
+
+private fun BackupExecutionRecord.toEntity() = ExecutionRecordEntity(
+    id = id, dateKey = dateKey, recordTime = recordTime,
+    timePrecision = timePrecision, periodLabel = periodLabel,
+    peopleSeen = peopleSeen, queries = queries, deals = deals,
+    createdAt = createdAt, updatedAt = updatedAt
 )

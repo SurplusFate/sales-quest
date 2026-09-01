@@ -20,7 +20,8 @@ data class BackupData(
     val userStats: List<BackupUserStat> = emptyList(),
     val achievements: List<BackupAchievement> = emptyList(),
     val levelRequirements: List<BackupLevelRequirement> = emptyList(),
-    val dailySummaries: List<BackupDailySummary> = emptyList()
+    val dailySummaries: List<BackupDailySummary> = emptyList(),
+    val executionRecords: List<BackupExecutionRecord> = emptyList()
 )
 
 @Serializable
@@ -131,6 +132,20 @@ data class BackupDailySummary(
     val customerFeedback: String,
     val discovery: String,
     val improvement: String,
+    val updatedAt: Long
+)
+
+@Serializable
+data class BackupExecutionRecord(
+    val id: String,
+    val dateKey: String,
+    val recordTime: Long? = null,
+    val timePrecision: String,
+    val periodLabel: String? = null,
+    val peopleSeen: Int,
+    val queries: Int,
+    val deals: Int,
+    val createdAt: Long,
     val updatedAt: Long
 )
 

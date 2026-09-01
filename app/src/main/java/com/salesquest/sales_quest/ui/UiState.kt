@@ -26,6 +26,17 @@ data class WeekDayStats(
     val stats: BattleStats = BattleStats()
 )
 
+/** 执行记录 UI 展示模型 */
+data class ExecutionRecordUi(
+    val id: String,
+    val dateKey: String,
+    val timeLabel: String,
+    val timePrecision: String,
+    val peopleSeen: Int,
+    val queries: Int,
+    val deals: Int
+)
+
 /** 首页组合状态 */
 data class HomeUiState(
     val stats: BattleStats = BattleStats(),
@@ -35,5 +46,6 @@ data class HomeUiState(
     val streakDays: Int = 0,
     val weekStats: List<WeekDayStats> = emptyList(),
     val levelProgress: LevelProgress? = null,
+    val executionRecords: List<ExecutionRecordUi> = emptyList(),
     val loading: Boolean = true
 )

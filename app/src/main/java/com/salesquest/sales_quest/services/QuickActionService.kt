@@ -60,6 +60,15 @@ class QuickActionService(
         postUpdate()
     }
 
+    /**
+     * 数据已通过其他途径写入 (如 ExecutionRecordService), 仅触发后续处理
+     *
+     * 调用 postUpdate: 刷新任务进度 → 发放 XP → 检查连续作战 → 检查成就
+     */
+    suspend fun refreshAfterDataChange() {
+        postUpdate()
+    }
+
     /** 读取今日见人数 */
     private suspend fun getTodayPeople(): Int =
         db.settingDao().getInt(SettingsKeys.peopleSeen(DateUtil.dateKey()))

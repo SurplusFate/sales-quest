@@ -257,7 +257,8 @@ open class WebDavService(
     /** 立即备份: 导出数据 → 打包 zip → PUT 上传 */
     open suspend fun backupNow(config: WebDavConfig = configStore.load()): WebDavResult {
         if (!config.isConfigured()) return WebDavResult.Failure("请先完成账号配置")
-        ensureDir(config)
+        val dirResult = ensureDir(config)
+        if (dirResult is WebDavResult.Failure) return dirResult
 
         return withContext(Dispatchers.IO) {
             // 数据导出 + 文件读取 + 压缩 + 网络上传全部在 IO 线程

@@ -6,16 +6,22 @@ import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.core.SettingsKeys
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.services.LevelService
+import com.salesquest.sales_quest.data.entity.ExecutionRecordEntity
 import com.salesquest.sales_quest.ui.BattleStats
+import com.salesquest.sales_quest.ui.ExecutionRecordUi
 import com.salesquest.sales_quest.ui.HomeUiState
 import com.salesquest.sales_quest.ui.WeekDayStats
 import com.salesquest.sales_quest.services.DailyTaskConfig
+import com.salesquest.sales_quest.services.ExecutionRecordService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 首页 ViewModel - 组合今日作战数据/任务/等级/连续作战
@@ -61,6 +67,11 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    /** 今日执行记录 (响应式) */
+    private val executionRecordsFlow = AppContainer.executionRecordService
+        .watchRecords(todayDateKey)
+        .map { records -> records.map { it.toUi() } }
+
     private val statsFlow = db.statsDao().watchStats()
 
     /** 等级进度: 使用 LevelService 多条件判定 (非纯 XP) */
@@ -87,8 +98,9 @@ class HomeViewModel : ViewModel() {
     val uiState: StateFlow<HomeUiState> = combine(
         statsTasksPair,
         statsConfigPair,
-        weekLevelPair
-    ) { st, sc, wl ->
+        weekLevelPair,
+        executionRecordsFlow
+    ) { st, sc, wl, er ->
         HomeUiState(
             stats = st.first,
             tasks = st.second,
@@ -97,11 +109,34 @@ class HomeViewModel : ViewModel() {
             streakDays = sc.first?.streakDays ?: 0,
             weekStats = wl.first,
             levelProgress = wl.second,
+            executionRecords = er,
             loading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
     companion object {
+        /** 执行记录时间标签格式化 */
+        internal fun formatTimeLabel(entity: ExecutionRecordEntity): String = when (entity.timePrecision) {
+            ExecutionRecordService.PRECISION_EXACT -> {
+                entity.recordTime?.let {
+                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it))
+                } ?: "未知时间"
+            }
+            ExecutionRecordService.PRECISION_PERIOD -> entity.periodLabel ?: "时段"
+            ExecutionRecordService.PRECISION_DAILY_TOTAL -> "当天总量"
+            else -> "未知"
+        }
+
+        /** ExecutionRecordEntity → ExecutionRecordUi */
+        internal fun ExecutionRecordEntity.toUi() = ExecutionRecordUi(
+            id = id,
+            dateKey = dateKey,
+            timeLabel = formatTimeLabel(this),
+            timePrecision = timePrecision,
+            peopleSeen = peopleSeen,
+            queries = queries,
+            deals = deals
+        )
         /**
          * 由 settings 列表组装周一至周六的本周战绩
          * 与 DailyStatsService 共用同一 settings 数据源, 保证两页数据一致

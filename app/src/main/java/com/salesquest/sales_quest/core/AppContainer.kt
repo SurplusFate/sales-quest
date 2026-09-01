@@ -14,6 +14,7 @@ import com.salesquest.sales_quest.services.ConfigService
 import com.salesquest.sales_quest.services.DailyStatsService
 import com.salesquest.sales_quest.services.DailySummaryService
 import com.salesquest.sales_quest.services.DailyTaskService
+import com.salesquest.sales_quest.services.ExecutionRecordService
 import com.salesquest.sales_quest.services.LevelService
 import com.salesquest.sales_quest.services.QuickActionService
 import com.salesquest.sales_quest.services.WebDavConfigStore
@@ -68,6 +69,9 @@ object AppContainer {
     lateinit var weeklySummaryService: WeeklySummaryService
         private set
 
+    lateinit var executionRecordService: ExecutionRecordService
+        private set
+
     var isInitialized: Boolean = false
         private set
 
@@ -89,6 +93,7 @@ object AppContainer {
         autoBackupManager = AutoBackupManager(webDavService, webDavConfigStore)
         dailySummaryService = DailySummaryService(db) { autoBackupManager.markDirty() }
         weeklySummaryService = WeeklySummaryService(db)
+        executionRecordService = ExecutionRecordService(db, quickActionService) { autoBackupManager.markDirty() }
         isInitialized = true
         AppLogger.info("AppContainer", "服务初始化完成")
     }
@@ -108,6 +113,7 @@ object AppContainer {
         backupService = BackupService(db)
         dailySummaryService = DailySummaryService(db)
         weeklySummaryService = WeeklySummaryService(db)
+        executionRecordService = ExecutionRecordService(db, quickActionService)
         isInitialized = true
     }
 
