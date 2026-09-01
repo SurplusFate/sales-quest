@@ -56,8 +56,8 @@ Entries discovered by the Agent during task execution should follow this format:
 - Category: Build Methods
 - Instructions:
   - 当前沙箱构建环境: JDK 17 需 `apt-get install -y openjdk-17-jdk-headless` (/usr/lib/jvm/java-17-openjdk-amd64)；Android SDK 需手动下载 commandlinetools 安装到 /opt/android-sdk (platforms;android-35 + build-tools;34.0.0/35.0.0)，并在 /workspace/local.properties 写 `sdk.dir=/opt/android-sdk`。
-  - gradle.properties 内置代理 systemProp http(s).proxyHost=127.0.0.1:18080，该代理当前环境未运行会致 gradle 全部网络下载失败 (AGP 解析 "could not resolve")；构建前需临时注释这 4 行，构建后还原。
-  - services.gradle.org 对 Java 直连 Connection refused 但 curl 可达；wrapper 发行版 gradle-8.11.1 手动下载到 ~/.gradle/wrapper/dists/<hash>/ 并 touch gradle-8.11.1.ok 后可直接用 `~/.gradle/wrapper/dists/<hash>/gradle-8.11.1/bin/gradle` 执行。
+  - gradle.properties 内置代理 systemProp http(s).proxyHost=127.0.0.1:18080，该代理当前环境未运行会致 gradle 全部网络下载失败 (AGP 解析 "could not resolve")；不改文件的前提下用命令行覆盖即可：`./gradlew ... -Dhttp.proxyHost= -Dhttp.proxyPort= -Dhttps.proxyHost= -Dhttps.proxyPort=`。
+  - services.gradle.org 等域名对 Java 直连 Connection refused 但 curl 可达（域名仅 IPv6 / 环境无 IPv6）；构建需 `export JAVA_TOOL_OPTIONS="-Djava.net.preferIPv4Stack=true"`。wrapper 发行版 gradle-8.11.1 手动下载到 ~/.gradle/wrapper/dists/gradle-8.11.1-bin/<hash>/ 并 touch `gradle-8.11.1-bin.zip.ok` 后可用；注意目录布局要求 hash 目录下恰好 1 个子目录（解压 zip 并剥离顶层目录 gradle-8.11.1，bin/lib 直接放该子目录内），否则报 "contains too many directories" / launcher NPE。
   - 单元测试: `gradle :app:testDebugUnitTest`（首次下载依赖约 12 分钟，后续快）；WeekStatsTest 的「首页本周战绩与DailyStatsService数据一致」「首页修改数据后本周战绩自动刷新」两个用例在无改动时也失败 (expected X but was 0)，属既有问题与本次代码无关。
   - 旧 Flutter 源码已归档到 legacy/ 目录 (lib/test/web/android/pubspec 等)，重构参考逻辑读取 legacy/。
 

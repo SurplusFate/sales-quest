@@ -66,6 +66,28 @@ object DateUtil {
         return c.timeInMillis
     }
 
+    /** 本月1号 0 点时间戳 */
+    fun monthStart(time: Long = System.currentTimeMillis()): Long {
+        val c = Calendar.getInstance().apply { this.timeInMillis = time }
+        c.set(Calendar.HOUR_OF_DAY, 0)
+        c.set(Calendar.MINUTE, 0)
+        c.set(Calendar.SECOND, 0)
+        c.set(Calendar.MILLISECOND, 0)
+        c.set(Calendar.DAY_OF_MONTH, 1)
+        return c.timeInMillis
+    }
+
+    /** 从 start 到 end (含端点) 之间的所有 dateKey 列表 */
+    fun dateKeysBetween(start: Long, end: Long): List<String> {
+        val result = mutableListOf<String>()
+        var t = start
+        while (t <= end) {
+            result += dateKey(t)
+            t += 24L * 60 * 60 * 1000
+        }
+        return result
+    }
+
     /** 本周周一至周六的 dateKey 列表 (默认 6 天, 不含周日) */
     fun weekDateKeys(time: Long = System.currentTimeMillis(), dayCount: Int = 6): List<String> {
         val monday = mondayStart(time)

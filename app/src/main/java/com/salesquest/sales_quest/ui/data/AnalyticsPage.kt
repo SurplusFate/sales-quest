@@ -56,16 +56,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.data.DateUtil
 import kotlinx.coroutines.launch
 
-/** 数据分析页 - 任意历史日期查看/录入/修改 + 累计数据 + 总结入口 */
+/** 数据分析页 - 今日/本周/本月/累计 + 任意历史日期查看/录入/修改 + 总结入口 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsPage(
     onOpenSummary: () -> Unit = {},
     viewModel: AnalyticsViewModel = viewModel()
 ) {
-    val today by viewModel.today.collectAsState()
     val total by viewModel.total.collectAsState()
     val selectedStats by viewModel.selectedStats.collectAsState()
+    val weekStats by viewModel.weekStats.collectAsState()
+    val monthStats by viewModel.monthStats.collectAsState()
     val executionRate by viewModel.executionRate.collectAsState()
     var tabIndex by remember { mutableStateOf(0) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -75,9 +76,24 @@ fun AnalyticsPage(
     val selectedDateKey = remember { mutableStateOf(DateUtil.dateKey()) }
 
     val isToday = tabIndex == 0
-    val people = if (isToday) selectedStats.peopleSeen else total.totalMeet
-    val queries = if (isToday) selectedStats.queries else total.totalQuery
-    val deals = if (isToday) selectedStats.deals else total.totalDeal
+    val people = when (tabIndex) {
+        0 -> selectedStats.peopleSeen
+        1 -> weekStats.peopleSeen
+        2 -> monthStats.peopleSeen
+        else -> total.totalMeet
+    }
+    val queries = when (tabIndex) {
+        0 -> selectedStats.queries
+        1 -> weekStats.queries
+        2 -> monthStats.queries
+        else -> total.totalQuery
+    }
+    val deals = when (tabIndex) {
+        0 -> selectedStats.deals
+        1 -> weekStats.deals
+        2 -> monthStats.deals
+        else -> total.totalDeal
+    }
 
     Scaffold(
         topBar = {
@@ -274,7 +290,7 @@ internal fun EditMetricDialog(
     )
 }
 
-/** 时间切换条 (V1 仅实现 今日 / 累计) */
+/** 时间切换条 (今日 / 本周 / 本月 / 累计) */
 @Composable
 fun TimeToggle(selectedIndex: Int, onChanged: (Int) -> Unit) {
     val labels = listOf("今日", "本周", "本月", "累计")
@@ -285,7 +301,7 @@ fun TimeToggle(selectedIndex: Int, onChanged: (Int) -> Unit) {
         labels.forEachIndexed { i, label ->
             FilterChip(
                 selected = i == selectedIndex,
-                onClick = { if (i == 0 || i == 3) onChanged(i) },
+                onClick = { onChanged(i) },
                 label = { Text(label) }
             )
             Spacer(Modifier.width(8.dp))

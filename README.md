@@ -155,6 +155,21 @@
 - 修复: `mode` 和 `theme` 改为 `SalesQuestTheme` 的参数, `MainActivity` 用 `collectAsState()` 收集后传入
 - 切换主题/夜间模式后即时生效, 无需重启
 
+### v1.0.17 (2026-09-01) - 数据页支持本周/本月统计
+
+**新功能**
+- 数据页新增"本周""本月"视图: 核心数据 (见人/查询/成交/金额) 与转化率按所选周期展示
+- 本周统计区间为周一~今天, 本月统计区间为1号~今天, 当天录入数据即时反映
+
+**Bug 修复**
+- 根因: `TimeToggle` 点击处理被硬编码 `if (i == 0 || i == 3)`, 仅放行"今日/累计", 导致"本周/本月"标签点击无反应
+- 修复: 放开四个 tab 点击切换, 页面数据按 tab 映射到 今日/本周/本月/累计
+
+**内部**
+- `AnalyticsViewModel` 新增 `weekStats` / `monthStats` StateFlow (基于共享 settingsFlow, 与首页同源)
+- `DateUtil` 新增 `monthStart()` / `dateKeysBetween()`; `sumRange()` 提为 companion internal
+- 新增 `AnalyticsRangeStatsTest` 11 个用例, 全量单元测试 189/191 通过
+
 ### v1.0.11 (2026-08-20) - 暗黑+霓虹配色强制暗黑模式
 
 **优化**

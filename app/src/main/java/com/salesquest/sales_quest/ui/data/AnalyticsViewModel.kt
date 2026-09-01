@@ -6,6 +6,7 @@ import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.core.SettingsKeys
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
+import com.salesquest.sales_quest.data.entity.SettingEntity
 import com.salesquest.sales_quest.ui.BattleStats
 import com.salesquest.sales_quest.ui.TotalStats
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-/** 数据分析 ViewModel - 任意历史日期查看/录入/修改 + 累计数据 */
+/** 数据分析 ViewModel - 任意历史日期查看/录入/修改 + 本周/本月/累计数据 */
 class AnalyticsViewModel : ViewModel() {
 
     private val db = AppContainer.db
@@ -36,17 +37,6 @@ class AnalyticsViewModel : ViewModel() {
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BattleStats())
 
-    /** 今天的数据 (首页同源) */
-    val today: StateFlow<BattleStats> = settingsFlow.map { settings ->
-        val map = settings.associate { it.key to it.value }
-        val todayDateKey = DateUtil.dateKey()
-        BattleStats(
-            peopleSeen = map[SettingsKeys.peopleSeen(todayDateKey)]?.toIntOrNull() ?: 0,
-            queries = map[SettingsKeys.queries(todayDateKey)]?.toIntOrNull() ?: 0,
-            deals = map[SettingsKeys.deals(todayDateKey)]?.toIntOrNull() ?: 0
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BattleStats())
-
     val total: StateFlow<TotalStats> = settingsFlow.map { settings ->
         val map = settings.associate { it.key to it.value }
         TotalStats(
@@ -55,6 +45,16 @@ class AnalyticsViewModel : ViewModel() {
             totalDeal = map[SettingsKeys.TOTAL_DEALS]?.toIntOrNull() ?: 0
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TotalStats())
+
+    /** 本周累计 (周一 ~ 今天, 与首页共用 settings 数据源) */
+    val weekStats: StateFlow<BattleStats> = settingsFlow.map { settings ->
+        sumRange(settings, DateUtil.dateKeysBetween(DateUtil.mondayStart(), System.currentTimeMillis()))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BattleStats())
+
+    /** 本月累计 (1号 ~ 今天) */
+    val monthStats: StateFlow<BattleStats> = settingsFlow.map { settings ->
+        sumRange(settings, DateUtil.dateKeysBetween(DateUtil.monthStart(), System.currentTimeMillis()))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BattleStats())
 
     /** 今日执行度 = 参与任务的进度均值 */
     val executionRate: StateFlow<Double> = db.taskDao().watchByDate(DateUtil.dateKey()).map { tasks: List<DailyTaskEntity> ->
@@ -102,5 +102,21 @@ class AnalyticsViewModel : ViewModel() {
         val queries = if (metricCode == "QUERY") newValue else current.queries
         val deals = if (metricCode == "DEAL") newValue else current.deals
         statsService.updateDailyStats(dateKey, peopleSeen, queries, deals)
+    }
+
+    companion object {
+        /** 累加指定日期区间内的每日明细 (people_seen_/queries_/deals_ 前缀键) */
+        internal fun sumRange(settings: List<SettingEntity>, dateKeys: List<String>): BattleStats {
+            val map = settings.associate { it.key to it.value }
+            var peopleSeen = 0
+            var queries = 0
+            var deals = 0
+            for (d in dateKeys) {
+                peopleSeen += map[SettingsKeys.peopleSeen(d)]?.toIntOrNull() ?: 0
+                queries += map[SettingsKeys.queries(d)]?.toIntOrNull() ?: 0
+                deals += map[SettingsKeys.deals(d)]?.toIntOrNull() ?: 0
+            }
+            return BattleStats(peopleSeen = peopleSeen, queries = queries, deals = deals)
+        }
     }
 }
