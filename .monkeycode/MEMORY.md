@@ -82,3 +82,13 @@ Entries discovered by the Agent during task execution should follow this format:
   - kotlinx.serialization 的 Json 默认不编码有默认值的字段，导出配置 JSON 需 `encodeDefaults = true`（否则 version 字段缺失）。
   - BackupServiceTest 中内存库 readDatabaseFileBytes() 返回 null，属预期，测试只断言数据级 JSON。
 
+[Project Knowledge Summary]
+- Date: 2026-09-02
+- Context: Discovered by Agent while fixing "双 v1.0.17 包混淆" (排查报告)
+- Category: Workflow & Collaboration
+- Instructions:
+  - 发布工作流: 每次发布唯一 versionCode/versionName; 产物↔tag↔commit 三者对齐 —— release APK 归档到 releases/sales-quest-v<ver>-release.apk 并打 git tag v<ver>, 用 `git push origin main --follow-tags`。
+  - 签名校验: 必须用仓库内 release.jks 构建; 产物证书 SHA1/SHA256 与 `keytool -list -v -keystore release.jks` 不一致即说明不是干净构建。Release 附件出现过签名不同的 app-release.apk, 不可作为权威包。
+  - 多环境协作: 仓库可能被多个工作区同时推送, 改版前先 `git fetch origin --tags`, 改完后 push 时用 --follow-tags 保证 tag 一并推送。
+  - WeekStatsTest 2 个日期敏感用例 (本周战绩与DailyStatsService一致/自动刷新) 已修复为使用当前周 `DateUtil.weekDateKeys()` 而非硬编码旧周。
+
