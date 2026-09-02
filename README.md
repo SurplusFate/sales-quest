@@ -24,6 +24,23 @@
 
 ## 修改记录
 
+### v1.0.19 (2026-09-02) - 分段执行记录销售漏斗校验
+
+**修复 (P0: 防止备份被污染)**
+- 新增 `FunnelValidator` 公共校验器 (规则 `0 <= 成交 <= 查询 <= 见人`)
+- `ExecutionRecordService` addRecord / updateRecord 单条记录漏斗校验; `recalculateDailyTotal` 对累加结果兜底校验 (抛异常事务回滚)
+- 违规数据不再写入 settings, 避免备份永久无法恢复 (`validateBackupFunnel` 拒绝恢复)
+
+**修复 (P1)**
+- 首页快速录入下调数据保存失败: 逐项 `setPeopleSeen/setQuery/setDeal` 的中间态校验改为整组写入后统一触发任务/XP/成就
+
+**UI**
+- `validateExecEntry` 补漏斗校验; 编辑记录对话框增加内联错误提示
+
+**测试**
+- 新增 `ExecutionRecordFunnelTest` 7 个用例 (单条违规 / 累加违规回滚 / 基准创建 / 编辑删除重算)
+- 全量单元测试 200/200 通过
+
 ### v1.0.18 (2026-09-02) - 自动备份可靠性修复 + 发布版本拆分
 
 **Bug 修复: 自动备份在进程被杀 / 失败 / 开关切换时丢失**
