@@ -75,9 +75,9 @@ fun ExecutionRecordSheet(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedDateKey by remember { mutableStateOf(initialDateKey) }
-    var meetText by remember { mutableStateOf("") }
-    var queryText by remember { mutableStateOf("") }
-    var dealText by remember { mutableStateOf("") }
+    var meetText by remember { mutableStateOf("0") }
+    var queryText by remember { mutableStateOf("0") }
+    var dealText by remember { mutableStateOf("0") }
     var saving by remember { mutableStateOf(false) }
 
     // 历史补录参数
@@ -290,9 +290,9 @@ fun ExecutionRecordSheet(
 
                         if (isHistorical) {
                             // 补录模式: 清空输入, 继续添加
-                            meetText = ""
-                            queryText = ""
-                            dealText = ""
+                            meetText = "0"
+                            queryText = "0"
+                            dealText = "0"
                             addedCount++
                             snackbarHostState.showSnackbar("已保存 (第 $addedCount 条)")
                         } else {
