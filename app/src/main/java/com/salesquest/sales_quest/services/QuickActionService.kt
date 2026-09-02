@@ -86,15 +86,7 @@ class QuickActionService(
      * @throws IllegalArgumentException 校验失败时抛出, 消息为中文提示
      */
     private fun validateFunnel(peopleSeen: Int, queries: Int, deals: Int) {
-        if (peopleSeen < 0 || queries < 0 || deals < 0) {
-            throw IllegalArgumentException("数字不能为负数")
-        }
-        if (queries > peopleSeen) {
-            throw IllegalArgumentException("查询数不能大于见人数")
-        }
-        if (deals > queries) {
-            throw IllegalArgumentException("成交数不能大于查询数")
-        }
+        FunnelValidator.validate(peopleSeen, queries, deals)
     }
 
     /**

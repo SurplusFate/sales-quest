@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.data.DateUtil
+import com.salesquest.sales_quest.services.FunnelValidator
 import com.salesquest.sales_quest.ui.ExecutionRecordUi
 import kotlinx.coroutines.launch
 
@@ -470,6 +471,7 @@ private fun EditRecordDialog(
     var meetText by remember { mutableStateOf(record.peopleSeen.toString()) }
     var queryText by remember { mutableStateOf(record.queries.toString()) }
     var dealText by remember { mutableStateOf(record.deals.toString()) }
+    var errorText by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -478,7 +480,7 @@ private fun EditRecordDialog(
             Column {
                 OutlinedTextField(
                     value = meetText,
-                    onValueChange = { meetText = it },
+                    onValueChange = { meetText = it; errorText = null },
                     label = { Text("见人数") },
                     trailingIcon = { Text("人") },
                     singleLine = true,
@@ -490,7 +492,7 @@ private fun EditRecordDialog(
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = queryText,
-                    onValueChange = { queryText = it },
+                    onValueChange = { queryText = it; errorText = null },
                     label = { Text("查询数") },
                     trailingIcon = { Text("次") },
                     singleLine = true,
@@ -502,7 +504,7 @@ private fun EditRecordDialog(
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = dealText,
-                    onValueChange = { dealText = it },
+                    onValueChange = { dealText = it; errorText = null },
                     label = { Text("成交数") },
                     trailingIcon = { Text("单") },
                     singleLine = true,
@@ -511,6 +513,14 @@ private fun EditRecordDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (errorText != null) {
+                    Text(
+                        errorText!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
         },
         confirmButton = {
@@ -519,7 +529,12 @@ private fun EditRecordDialog(
                 val query = queryText.trim().toIntOrNull() ?: -1
                 val deal = dealText.trim().toIntOrNull() ?: -1
                 if (meet >= 0 && query >= 0 && deal >= 0) {
-                    onSave(meet, query, deal)
+                    errorText = FunnelValidator.errorOrNull(meet, query, deal)
+                    if (errorText == null) {
+                        onSave(meet, query, deal)
+                    }
+                } else {
+                    errorText = "只能输入非负整数"
                 }
             }) { Text("保存") }
         },

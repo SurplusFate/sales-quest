@@ -52,10 +52,8 @@ class ExecutionRecordService(
         queries: Int,
         deals: Int
     ): String {
-        // 基本校验
-        if (peopleSeen < 0 || queries < 0 || deals < 0) {
-            throw IllegalArgumentException("数字不能为负数")
-        }
+        // 基本校验 + 单条记录漏斗校验 (成交 <= 查询 <= 见人)
+        FunnelValidator.validate(peopleSeen, queries, deals)
 
         val recordId = IdGenerator.gen("er_")
         val now = System.currentTimeMillis()
@@ -105,9 +103,8 @@ class ExecutionRecordService(
         queries: Int,
         deals: Int
     ) {
-        if (peopleSeen < 0 || queries < 0 || deals < 0) {
-            throw IllegalArgumentException("数字不能为负数")
-        }
+        // 基本校验 + 单条记录漏斗校验 (成交 <= 查询 <= 见人)
+        FunnelValidator.validate(peopleSeen, queries, deals)
 
         val dateKey = db.withTransaction {
             val existing = db.executionRecordDao().getById(id)
@@ -221,6 +218,10 @@ class ExecutionRecordService(
         val totalPeople = records.sumOf { it.peopleSeen }
         val totalQueries = records.sumOf { it.queries }
         val totalDeals = records.sumOf { it.deals }
+
+        // 累加结果兜底校验, 防止非法数据写入 settings 进而污染备份
+        // (抛异常会回滚外层事务, 不产生脏数据)
+        FunnelValidator.validate(totalPeople, totalQueries, totalDeals)
 
         db.settingDao().setInt(SettingsKeys.peopleSeen(dateKey), totalPeople)
         db.settingDao().setInt(SettingsKeys.queries(dateKey), totalQueries)

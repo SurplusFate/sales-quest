@@ -50,6 +50,8 @@ class DailyStatsService(
     /**
      * 单指标更新 (供实时录入/今日编辑复用)
      * 负数拒绝; 不校验指标间关系 (允许分步录入)
+     * 注意: 本方法不校验漏斗 (成交 <= 查询 <= 见人), 调用方必须自行保证整组数据的合法性,
+     * 否则违规数据会直写 settings 并污染备份 (备份恢复时会拒绝)。已废弃的逐项录入链路除外。
      * 使用 Transaction 保证写入和累计重算的原子性
      */
     suspend fun updateDailyMetric(dateKey: String, metricCode: String, newValue: Int) {

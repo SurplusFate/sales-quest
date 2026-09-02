@@ -145,11 +145,10 @@ fun QuickActionSheet(
                         val deal = dealText.trim().toInt()
                         val todayKey = DateUtil.dateKey()
                         if (selectedDateKey == todayKey) {
-                            // 今天: 走快速操作链路 (触发任务/XP/成就)
-                            val service = AppContainer.quickActionService
-                            service.setPeopleSeen(meet)
-                            service.setQuery(query)
-                            service.setDeal(deal)
+                            // 今天: 先整组写入 (内部 updateDailyStats 校验漏斗), 再统一触发任务/XP/成就
+                            // 避免逐项 setPeopleSeen/setQuery/setDeal 的中间态校验导致下调数据保存失败
+                            AppContainer.dailyStatsService.updateDailyStats(todayKey, meet, query, deal)
+                            AppContainer.quickActionService.refreshAfterDataChange()
                         } else {
                             // 历史日期: 纯数据补录/修改, 不触发 XP
                             AppContainer.dailyStatsService.updateDailyStats(selectedDateKey, meet, query, deal)

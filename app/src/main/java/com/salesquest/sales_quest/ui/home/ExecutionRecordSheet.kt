@@ -381,7 +381,7 @@ fun ExecutionRecordSheet(
     }
 }
 
-/** 执行记录数据输入校验 */
+/** 执行记录数据输入校验 (含销售漏斗约束) */
 internal fun validateExecEntry(meetText: String, queryText: String, dealText: String): String? {
     val inputs = listOf("见人" to meetText, "查询" to queryText, "成交" to dealText)
     for ((label, text) in inputs) {
@@ -389,6 +389,12 @@ internal fun validateExecEntry(meetText: String, queryText: String, dealText: St
         val value = text.trim().toIntOrNull() ?: return "${label}只能输入非负整数"
         if (value < 0) return "${label}不能为负数"
     }
+    // 销售漏斗校验: 成交 <= 查询 <= 见人
+    val meet = meetText.trim().toInt()
+    val query = queryText.trim().toInt()
+    val deal = dealText.trim().toInt()
+    if (query > meet) return "查询数不能大于见人数"
+    if (deal > query) return "成交数不能大于查询数"
     return null
 }
 
