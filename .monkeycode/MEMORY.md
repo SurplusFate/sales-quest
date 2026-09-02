@@ -92,4 +92,5 @@ Entries discovered by the Agent during task execution should follow this format:
   - 多环境协作: 仓库可能被多个工作区同时推送, 改版前先 `git fetch origin --tags`, 改完后 push 时用 --follow-tags 保证 tag 一并推送。
   - WeekStatsTest 2 个日期敏感用例 (本周战绩与DailyStatsService一致/自动刷新) 已修复为使用当前周 `DateUtil.weekDateKeys()` 而非硬编码旧周。
   - gh CLI token 可能随镜像环境重置而失效 (发布时 401 Bad credentials): 用 `echo -e "protocol=https\nhost=github.com\n" | git credential fill` 取完整 password (注意 password 可能含 = , 用 substr 整行取), 再 `printf '%s\n' "$p" | gh auth login --with-token` 即可恢复为 monkeycode-ai[bot]。
+  - 实测 `git push origin main --follow-tags` 可能只推 main 未推 tag (v1.0.20 教训): push 后用 `git ls-remote --tags origin v<ver>` 核对, 缺失则单独 `git push origin v<ver>`, 之后 gh release create 才不会报 "tag exists locally but has not been pushed"。
 
