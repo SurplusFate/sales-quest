@@ -94,6 +94,13 @@ class WebDavConfigStore(context: Context) {
         prefs.edit().putLong(BackupKeys.LAST_BACKUP_AT, time).apply()
     }
 
+    /** 是否有待完成的备份 (持久化, 进程被杀后重启可补偿) */
+    fun isPendingBackup(): Boolean = prefs.getBoolean(BackupKeys.PENDING_BACKUP, false)
+
+    fun setPendingBackup(v: Boolean) {
+        prefs.edit().putBoolean(BackupKeys.PENDING_BACKUP, v).apply()
+    }
+
     fun isConfigured(): Boolean {
         val c = load()
         return c.url.isNotBlank() && c.username.isNotBlank() && c.password.isNotBlank()

@@ -188,7 +188,8 @@ class WeekStatsTest {
 
     @Test
     fun 首页本周战绩与DailyStatsService数据一致() = runTest {
-        val keys = DateUtil.weekDateKeys(localMillis(2026, 8, 18))
+        // 使用当前日期所在周, 与 buildWeekStats 的"本周"区间保持一致
+        val keys = DateUtil.weekDateKeys()
         statsService.updateDailyStats(keys[0], 20, 10, 4)
         statsService.updateDailyStats(keys[1], 35, 18, 6)
         statsService.updateDailyStats(keys[3], 42, 21, 7)
@@ -220,7 +221,8 @@ class WeekStatsTest {
 
     @Test
     fun 首页修改数据后本周战绩自动刷新() = runTest {
-        val keys = DateUtil.weekDateKeys(localMillis(2026, 8, 18))
+        // 使用当前日期所在周, 与 buildWeekStats 的"本周"区间保持一致
+        val keys = DateUtil.weekDateKeys()
         statsService.updateDailyStats(keys[0], 10, 5, 2)
 
         val weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll())

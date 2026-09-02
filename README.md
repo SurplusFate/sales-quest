@@ -24,6 +24,67 @@
 
 ## 修改记录
 
+### v1.0.18 (2026-09-02) - 自动备份可靠性修复 + 发布版本拆分
+
+**Bug 修复: 自动备份在进程被杀 / 失败 / 开关切换时丢失**
+- 根因: `AutoBackupManager` 的 dirty / 版本号全在内存, 进程被杀后延迟协程随之消失, 备份永不发生; 备份失败后无重试, 只能等下次数据变化; 开关关闭期间数据不补备份
+- 修复: 新增持久化 pending 标记 (SharedPreferences), `markDirty` 置位、备份成功后清除; 新增启动补偿 `resumeIfPending()`, App 启动时发现未完成备份立即重新触发
+- 上传失败后按指数退避自动重试 (2 分钟起, 上限 30 分钟), 不再依赖下次数据变化
+- 新增 `AutoBackupManagerTest` 2 个启动补偿用例; 修复 `WeekStatsTest` 2 个日期敏感用例 (硬编码旧周改为当前周)
+- 全量单元测试 193/193 通过
+
+**发布版本拆分 (解决双 v1.0.17 包混淆)**
+- 上个 v1.0.17 存在两个产物 (周月统计包 / 分段记录包), 签名不同互相无法覆盖安装
+- 统一从 main 最新代码用仓库 `release.jks` 重新构建, 版本号提升到 `1.0.18` (versionCode 20), 归档为 `releases/sales-quest-v1.0.18-release.apk`
+
+### v1.0.17 (2026-09-01) - 分段执行记录
+
+- `ExecutionRecordEntity` + Dao, 数据库 schema v3→v4 迁移 (`execution_records` 表)
+- `ExecutionRecordService`: 分段执行记录 (次数 / 时长 / 备注), 首页新增"分段执行记录"入口
+- 备份导出 / 恢复支持执行记录
+- 时间精度三档: EXACT / PERIOD / DAILY_TOTAL
+
+### v1.0.17 (2026-09-01) - 数据页支持本周/本月统计
+
+**新功能**
+- 数据页新增"本周""本月"视图: 核心数据 (见人/查询/成交/金额) 与转化率按所选周期展示
+- 本周统计区间为周一~今天, 本月统计区间为1号~今天, 当天录入数据即时反映
+
+**Bug 修复**
+- 根因: `TimeToggle` 点击处理被硬编码 `if (i == 0 || i == 3)`, 仅放行"今日/累计", 导致"本周/本月"标签点击无反应
+- 修复: 放开四个 tab 点击切换, 页面数据按 tab 映射到 今日/本周/本月/累计
+
+**内部**
+- `AnalyticsViewModel` 新增 `weekStats` / `monthStats` StateFlow (基于共享 settingsFlow, 与首页同源)
+- `DateUtil` 新增 `monthStart()` / `dateKeysBetween()`; `sumRange()` 提为 companion internal
+- 新增 `AnalyticsRangeStatsTest` 11 个用例
+
+### v1.0.16 (2026-08-27) - 业务逻辑整改 + 自动清理旧备份
+
+**业务逻辑整改 (数据一致性)**
+- 客户编辑字段覆盖、客户编号持久化计数器、配置导入原子性、等级配置 fallback、每日统计并发
+
+**自动清理旧备份**
+- 自动备份时清理 30 天前的旧备份文件
+- 签名 keystore 入库 (`release.jks` + `keystore.properties`), 跨环境重建一致签名
+
+### v1.0.15 (2026-08-21) - 自动备份从定时触发改为数据变化触发
+
+- 新增 `AutoBackupManager` (dirty 标记 + 版本号 + 2 分钟防抖)
+- 移除启动时 `maybeAutoBackup()`
+
+### v1.0.14 (2026-08-21) - 修复配置修改后首页与设置页目标值不同步
+
+- `TaskConfigViewModel` 改用 `watchTodayConfig()` Flow 替代一次性读取; `HomeViewModel` 合并 config 与 tasks
+
+### v1.0.13 (2026-08-21) - 首页今日任务目标随配置修改实时同步
+
+- 配置修改后首页今日任务目标即时更新, 无需重启
+
+### v1.0.12 (2026-08-20) - 修复配置文件导出竞态条件
+
+- `consumeJson` 提前清空导致写入失败
+
 ### v1.0.0 (2026-08-19) - 产品结构与业务逻辑修复
 
 **P0: 统一 App 版本管理**
@@ -154,21 +215,6 @@
 - 根因: `SalesQuestTheme` 内部用 `ThemeManager.mode.value` 直接读 StateFlow 当前值, 不触发 Compose 重组
 - 修复: `mode` 和 `theme` 改为 `SalesQuestTheme` 的参数, `MainActivity` 用 `collectAsState()` 收集后传入
 - 切换主题/夜间模式后即时生效, 无需重启
-
-### v1.0.17 (2026-09-01) - 数据页支持本周/本月统计
-
-**新功能**
-- 数据页新增"本周""本月"视图: 核心数据 (见人/查询/成交/金额) 与转化率按所选周期展示
-- 本周统计区间为周一~今天, 本月统计区间为1号~今天, 当天录入数据即时反映
-
-**Bug 修复**
-- 根因: `TimeToggle` 点击处理被硬编码 `if (i == 0 || i == 3)`, 仅放行"今日/累计", 导致"本周/本月"标签点击无反应
-- 修复: 放开四个 tab 点击切换, 页面数据按 tab 映射到 今日/本周/本月/累计
-
-**内部**
-- `AnalyticsViewModel` 新增 `weekStats` / `monthStats` StateFlow (基于共享 settingsFlow, 与首页同源)
-- `DateUtil` 新增 `monthStart()` / `dateKeysBetween()`; `sumRange()` 提为 companion internal
-- 新增 `AnalyticsRangeStatsTest` 11 个用例, 全量单元测试 189/191 通过
 
 ### v1.0.11 (2026-08-20) - 暗黑+霓虹配色强制暗黑模式
 

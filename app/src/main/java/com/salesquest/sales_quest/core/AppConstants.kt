@@ -192,6 +192,7 @@ object BackupKeys {
     const val WEBDAV_DIR = "webdav_dir"
     const val AUTO_BACKUP_ENABLED = "auto_backup_enabled"
     const val LAST_BACKUP_AT = "last_backup_at"
+    const val PENDING_BACKUP = "pending_backup"
     const val BACKUP_FILENAME_PREFIX = "sales_quest_backup_"
     const val DB_BACKUP_SUFFIX = ".db"
 }

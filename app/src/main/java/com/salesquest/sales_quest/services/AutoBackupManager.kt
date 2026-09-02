@@ -34,6 +34,9 @@ class AutoBackupManager(
     companion object {
         /** 防抖延迟时间 (2 分钟) */
         const val DEFAULT_DELAY_MS = 2 * 60 * 1000L
+
+        /** 失败重试最大退避时间 (30 分钟) */
+        const val MAX_BACKOFF_MS = 30 * 60 * 1000L
     }
 
     /** 是否有未备份的数据变化 */
@@ -41,6 +44,9 @@ class AutoBackupManager(
 
     /** 数据变化版本号 (每次 markDirty 递增) */
     private val dataChangeVersion = AtomicInteger(0)
+
+    /** 连续失败次数 (用于指数退避) */
+    private val retryCount = AtomicInteger(0)
 
     /** 当前延迟任务 (AtomicReference 保证并发 markDirty 时不会丢失任务引用) */
     private val delayJobRef = AtomicReference<Job?>(null)
@@ -83,6 +89,7 @@ class AutoBackupManager(
         }
 
         dirty.set(true)
+        configStore.setPendingBackup(true)
         val version = dataChangeVersion.incrementAndGet()
         AppLogger.info("AutoBackupManager", "markDirty: version=$version, dirty=true")
 
@@ -140,38 +147,59 @@ class AutoBackupManager(
                 if (currentVersion == backupVersion) {
                     // 备份期间无新数据, 标记完成
                     dirty.set(false)
+                    retryCount.set(0)
+                    configStore.setPendingBackup(false)
                     lastBackupResult = BackupOutcome.Success
                     AppLogger.info("AutoBackupManager", "备份成功, dirty=false (version=$currentVersion)")
                 } else {
                     // 备份期间产生了新数据, 继续安排下一次备份
+                    retryCount.set(0)
                     AppLogger.info("AutoBackupManager", "备份成功但版本不匹配 (backup=$backupVersion, current=$currentVersion), 继续延迟备份")
                     scheduleNextBackup()
                 }
             } else {
-                // 上传失败, 保持 dirty=true
+                // 上传失败, 保持 dirty=true 并按指数退避重试 (进程存活期间不依赖下次 markDirty)
                 val msg = (result as? WebDavResult.Failure)?.message ?: "unknown"
                 lastBackupResult = BackupOutcome.Failure(msg)
                 AppLogger.error("AutoBackupManager", "备份失败, dirty保持true: $msg")
-                // dirty 保持 true, 下次 markDirty 时会重新触发
+                retryCount.incrementAndGet()
+                scheduleNextBackup()
             }
         } catch (e: Exception) {
             lastBackupResult = BackupOutcome.Failure(e.message ?: e.javaClass.simpleName)
             AppLogger.error("AutoBackupManager", "备份异常: ${e.message}", e.stackTraceToString())
-            // dirty 保持 true
+            // dirty 保持 true, 按指数退避重试
+            retryCount.incrementAndGet()
+            scheduleNextBackup()
         } finally {
             backupMutex.unlock()
         }
     }
 
-    /** 重新安排延迟备份 (备份期间产生新数据时) */
+    /** 重新安排延迟备份 (失败重试 / 备份期间产生新数据时), 失败重试按指数退避 */
     private fun scheduleNextBackup() {
-        if (delayMs > 0) {
-            val newJob = scope.launch {
-                delay(delayMs)
-                executeBackup()
+        if (delayMs <= 0) return
+        val backoffMs = minOf(delayMs * (1L shl minOf(retryCount.get(), 4)), MAX_BACKOFF_MS)
+        val newJob = scope.launch {
+            delay(backoffMs)
+            executeBackup()
+        }
+        val oldJob = delayJobRef.getAndSet(newJob)
+        oldJob?.cancel()
+    }
+
+    /**
+     * 启动补偿: 上次进程退出前存在未完成的备份 (pending 标记) 时重新触发。
+     * 覆盖"录完数据 → 进程被系统回收 → 延迟协程消失 → 备份永不发生"的丢失路径。
+     */
+    fun resumeIfPending() {
+        try {
+            if (configStore.isPendingBackup()) {
+                AppLogger.info("AutoBackupManager", "启动补偿: 发现未完成的备份, 重新触发")
+                markDirty()
             }
-            val oldJob = delayJobRef.getAndSet(newJob)
-            oldJob?.cancel()
+        } catch (e: Exception) {
+            AppLogger.error("AutoBackupManager", "启动补偿读取 pending 标记失败: ${e.message}")
         }
     }
 
@@ -202,6 +230,7 @@ class AutoBackupManager(
     fun resetForTest() {
         dirty.set(false)
         dataChangeVersion.set(0)
+        retryCount.set(0)
         val oldJob = delayJobRef.getAndSet(null)
         oldJob?.cancel()
         backupExecutionCount = 0

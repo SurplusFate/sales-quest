@@ -30,6 +30,13 @@ class SalesQuestApplication : Application() {
             }
         }
 
-        // 自动备份改为数据变化触发 (AutoBackupManager), 不再启动时检查
+        // 自动备份改为数据变化触发 (AutoBackupManager); 启动时补偿上次进程退出前未完成的备份
+        appScope.launch {
+            try {
+                AppContainer.autoBackupManager.resumeIfPending()
+            } catch (e: Exception) {
+                AppLogger.error("App", "恢复待备份失败: $e")
+            }
+        }
     }
 }

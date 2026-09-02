@@ -87,8 +87,37 @@ class AutoBackupManagerTest {
 
         assertEquals(0, manager.backupExecutionCount)
         assertTrue(manager.lastBackupResult is AutoBackupManager.BackupOutcome.Skipped)
-        assertFalse(manager.isDirty())
     }
+
+    // ==================== 启动补偿: pending 持久化标记 ====================
+
+    @Test
+    fun 启动补偿_pending标记存在时重新触发备份() = runBlocking {
+        // 模拟上次进程退出前留下未完成的备份标记
+        configStore.setPendingBackup(true)
+
+        manager.resumeIfPending()
+
+        assertTrue(manager.isDirty())
+        assertEquals(1, manager.getDataChangeVersion())
+
+        // 备份成功后 pending 标记被清除
+        manager.triggerBackupNowForTest()
+
+        assertFalse(configStore.isPendingBackup())
+        assertFalse(manager.isDirty())
+        assertEquals(1, manager.backupExecutionCount)
+    }
+
+    @Test
+    fun 启动补偿_无pending标记时不做任何事() = runBlocking {
+        manager.resumeIfPending()
+
+        assertFalse(manager.isDirty())
+        assertEquals(0, manager.getDataChangeVersion())
+        assertEquals(0, manager.backupExecutionCount)
+    }
+
 
     // ==================== 测试 2: 产生一次数据变化 → 触发备份 ====================
 
