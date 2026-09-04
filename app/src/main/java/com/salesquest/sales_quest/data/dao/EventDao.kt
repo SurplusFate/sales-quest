@@ -40,6 +40,9 @@ interface EventDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEvent(event: CustomerEventEntity)
 
+    @Query("DELETE FROM customer_events WHERE customerId = :customerId")
+    suspend fun deleteByCustomer(customerId: String)
+
     @Query("DELETE FROM customer_events")
     suspend fun clearAll()
 }

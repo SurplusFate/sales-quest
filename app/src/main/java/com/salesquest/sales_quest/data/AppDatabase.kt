@@ -119,7 +119,13 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE customers ADD COLUMN customerNumber TEXT")
                 db.execSQL("CREATE UNIQUE INDEX index_customers_customerNumber ON customers(customerNumber) WHERE customerNumber IS NOT NULL")
-                db.execSQL("UPDATE customers SET customerNumber = name WHERE name LIKE '#%' AND customerNumber IS NULL")
+                // 仅将"以 # 开头且名字唯一"的存量客户迁移为编号; 名字重复的 # 客户保留 NULL,
+                // 否则同名客户会同时写入相同 customerNumber, 触发唯一约束导致升级崩溃
+                db.execSQL(
+                    "UPDATE customers SET customerNumber = name " +
+                        "WHERE name LIKE '#%' AND customerNumber IS NULL " +
+                        "AND (SELECT COUNT(*) FROM customers c2 WHERE c2.name = customers.name) = 1"
+                )
             }
         }
 

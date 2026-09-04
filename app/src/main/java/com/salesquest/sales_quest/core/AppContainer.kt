@@ -79,7 +79,7 @@ object AppContainer {
         if (isInitialized) return
         db = AppDatabase.build(context)
         xpService = XpService(db)
-        dailyTaskService = DailyTaskService(db) { autoBackupManager.markDirty() }
+        dailyTaskService = DailyTaskService(db, xpService) { autoBackupManager.markDirty() }
         achievementService = AchievementService(db)
         quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService) {
             autoBackupManager.markDirty()
@@ -102,7 +102,7 @@ object AppContainer {
     fun initForTest(testDb: AppDatabase) {
         db = testDb
         xpService = XpService(db)
-        dailyTaskService = DailyTaskService(db)
+        dailyTaskService = DailyTaskService(db, xpService)
         achievementService = AchievementService(db)
         quickActionService = QuickActionService(db, xpService, dailyTaskService, achievementService) {
             autoBackupManager.markDirty()
@@ -167,6 +167,12 @@ object AppContainer {
         } else {
             // === 新增: null 字段使用默认值 ===
             val name = if (params.name.isNullOrEmpty()) generateCustomerNumber() else params.name!!
+            // 防御: 若客户名以 # 开头 (用户主动输入的系统保留格式), 检查编号是否已被占用
+            // 已占用则放弃编号 (保留名字), 避免 insertCustomer(REPLACE) 静默覆盖其他客户
+            val customerNumber = if (name.startsWith("#")) {
+                val exists = db.customerDao().getAll().any { it.customerNumber == name }
+                if (exists) null else name
+            } else null
             val customer = CustomerEntity(
                 id = IdGenerator.gen("c_"),
                 name = name,
@@ -184,7 +190,7 @@ object AppContainer {
                 salesStage = params.stage?.code ?: CustomerStage.NEW.code,
                 nextFollowUpAt = params.nextFollowUpAt,
                 note = params.note,
-                customerNumber = if (name.startsWith("#")) name else null,
+                customerNumber = customerNumber,
                 createdAt = now,
                 updatedAt = now
             )
@@ -195,8 +201,21 @@ object AppContainer {
     }
 
     suspend fun deleteCustomer(id: String) {
-        db.customerDao().deleteCustomer(id)
+        // 级联清理: 仅删 customers 会遗留孤儿事件/跟进记录 (S1-3)
+        db.withTransaction {
+            db.eventDao().deleteByCustomer(id)
+            db.followUpDao().deleteByCustomer(id)
+            db.customerDao().deleteCustomer(id)
+        }
         markDirtySafe()
+    }
+
+    /** 清除全部数据 (设置页-清空所有), 并同步清除 pending 备份标记, 防止旧备份覆盖恢复数据 (S2-7) */
+    suspend fun clearAllData() {
+        db.clearAllData()
+        if (::webDavConfigStore.isInitialized) {
+            webDavConfigStore.setPendingBackup(false)
+        }
     }
 
     /** 安全标记数据已变化 (测试环境可能未初始化 autoBackupManager) */

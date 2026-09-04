@@ -177,6 +177,64 @@ class XpService(private val db: AppDatabase) {
         }
     }
 
+    // ==================== 重置支持 ====================
+
+    /**
+     * 回滚今日已发放的全部 XP (供"清除今日数据"调用, 防止清空后重复刷 XP)
+     *
+     * 1. 删除今日全部 xp_records
+     * 2. totalXp 扣减并重算等级 (基于最新累计指标)
+     * 3. 若今日触发过连续作战奖励, 同步回退 streakDays / lastActiveDate
+     *
+     * 必须在 clearTodayData 已重算累计总计后调用; 返回是否发生回滚
+     */
+    suspend fun revokeTodayRewards(): Boolean {
+        val start = DateUtil.dayStart()
+        val end = start + 24L * 60 * 60 * 1000
+
+        return db.withTransaction {
+            val todayXp = db.xpDao().getXpToday(start, end)
+            if (todayXp <= 0) return@withTransaction false
+
+            val hadCompletion = db.xpDao().countActionTypeInRange("DAILY_COMPLETION", start, end) > 0
+            db.xpDao().deleteByCreatedAtRange(start, end)
+
+            val stats = getOrCreateStats()
+            val newTotalXp = (stats.totalXp - todayXp).coerceAtLeast(0)
+
+            // 连续作战回退: 今天完成的奖励撤销, 等效"上次活跃 = 昨天"
+            var newStreak = stats.streakDays
+            var newLastActive = stats.lastActiveDate
+            if (hadCompletion) {
+                newStreak = (newStreak - 1).coerceAtLeast(0)
+                newLastActive = if (newStreak > 0) DateUtil.dayStart(DateUtil.yesterdayStart()) else null
+            }
+
+            val requirements = levelService.getRequirements()
+            val totalMeet = db.settingDao().getInt(SettingsKeys.TOTAL_MEETS)
+            val totalQuery = db.settingDao().getInt(SettingsKeys.TOTAL_QUERIES)
+            val totalDeal = db.settingDao().getInt(SettingsKeys.TOTAL_DEALS)
+            val newLevel = LevelService.evaluateCurrentLevel(
+                requirements = requirements,
+                totalXp = newTotalXp,
+                totalMeet = totalMeet,
+                totalQuery = totalQuery,
+                totalDeal = totalDeal,
+                streakDays = newStreak
+            )
+
+            db.statsDao().updateStats(
+                totalXp = newTotalXp,
+                currentLevel = newLevel,
+                streakDays = newStreak,
+                lastActiveDate = newLastActive,
+                updatedAt = System.currentTimeMillis()
+            )
+            AppLogger.info("XpService", "回滚今日 XP -$todayXp, totalXp=$newTotalXp, level=$newLevel, streak=$newStreak")
+            true
+        }
+    }
+
     private suspend fun getOrCreateStats(): UserStatEntity {
         val existing = db.statsDao().getStats()
         if (existing != null) return existing

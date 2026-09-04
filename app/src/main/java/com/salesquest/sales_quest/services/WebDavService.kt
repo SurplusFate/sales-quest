@@ -6,6 +6,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.salesquest.sales_quest.core.AppLogger
 import com.salesquest.sales_quest.core.BackupDefaults
 import com.salesquest.sales_quest.core.BackupKeys
 import okhttp3.Credentials
@@ -36,9 +37,19 @@ data class WebDavConfig(
  */
 class WebDavConfigStore(context: Context) {
 
-    private val prefs: SharedPreferences = createEncryptedPrefs(context)
+    /** 实际存储对象; 加密创建失败时回退普通 prefs */
+    private val prefs: SharedPreferences
 
-    private fun createEncryptedPrefs(context: Context): SharedPreferences {
+    /** 密码是否经 Keystore 加密存储 (false 表示降级明文, 存在安全风险) */
+    val isPasswordStorageSecure: Boolean
+
+    init {
+        val result = createEncryptedPrefs(context)
+        prefs = result.first
+        isPasswordStorageSecure = result.second
+    }
+
+    private fun createEncryptedPrefs(context: Context): Pair<SharedPreferences, Boolean> {
         return try {
             val masterKey = MasterKey.Builder(context)
                 .setKeyGenParameterSpec(
@@ -52,16 +63,21 @@ class WebDavConfigStore(context: Context) {
                         .build()
                 )
                 .build()
-            EncryptedSharedPreferences.create(
+            val encrypted = EncryptedSharedPreferences.create(
                 context,
                 BackupKeys.PREFS_BACKUP,
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
+            Pair(encrypted, true)
         } catch (e: Exception) {
-            // 密钥创建失败时回退普通 prefs (仅用于降级, 生产环境不会发生)
-            context.getSharedPreferences(BackupKeys.PREFS_BACKUP, Context.MODE_PRIVATE)
+            // 密钥创建失败: 绝不静默降级明文; 记录错误供诊断 (密码明文落盘存在安全风险)
+            AppLogger.error(
+                "WebDavConfigStore",
+                "EncryptedSharedPreferences 创建失败, 密码将以明文存储: ${e.message}"
+            )
+            Pair(context.getSharedPreferences(BackupKeys.PREFS_BACKUP, Context.MODE_PRIVATE), false)
         }
     }
 

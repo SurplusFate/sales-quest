@@ -35,6 +35,9 @@ abstract class ExecutionRecordDao {
     @Query("SELECT DISTINCT dateKey FROM execution_records ORDER BY dateKey DESC")
     abstract suspend fun getAllDates(): List<String>
 
+    @Query("DELETE FROM execution_records WHERE dateKey = :dateKey")
+    abstract suspend fun deleteByDateKey(dateKey: String)
+
     @Query("DELETE FROM execution_records")
     abstract suspend fun clearAll()
 }

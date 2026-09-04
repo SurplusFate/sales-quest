@@ -41,7 +41,14 @@ interface CustomerDao {
     @Query("DELETE FROM customers")
     suspend fun clearAll()
 
-    /** 查询当前最大客户编号 (如 #005 → "#005"), 不依赖客户数量 */
-    @Query("SELECT customerNumber FROM customers WHERE customerNumber IS NOT NULL ORDER BY customerNumber DESC LIMIT 1")
+    /**
+     * 查询当前最大客户编号 (如 #005 → "#005"), 不依赖客户数量
+     * 按数值语义排序: 先按字符串长度(位数)降序, 同长度再按字典序,
+     * 避免字典序缺陷 ("#999" > "#1000") 导致编号回退/重复
+     */
+    @Query(
+        "SELECT customerNumber FROM customers WHERE customerNumber IS NOT NULL AND customerNumber LIKE '#%' " +
+            "ORDER BY LENGTH(customerNumber) DESC, customerNumber DESC LIMIT 1"
+    )
     suspend fun getMaxCustomerNumber(): String?
 }

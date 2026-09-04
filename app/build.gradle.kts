@@ -40,12 +40,16 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // 开启 R8 混淆/收缩: 提高逆向成本
+            // (若混淆后出现反射/序列化崩溃, 在 proguard-rules.pro 补充 keep 规则)
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = if (keystoreProperties.isNotEmpty()) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                // 密钥缺失时不回退 debug 签名 (防止 debug 签名包被当作正式包分发), 产出未签名包
+                null
             }
         }
     }

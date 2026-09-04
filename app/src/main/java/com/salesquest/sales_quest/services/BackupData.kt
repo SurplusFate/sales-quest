@@ -50,6 +50,7 @@ data class BackupCustomer(
     val nextAction: String? = null,
     val nextFollowUpAt: Long? = null,
     val note: String? = null,
+    val customerNumber: String? = null,
     val createdAt: Long,
     val updatedAt: Long
 )

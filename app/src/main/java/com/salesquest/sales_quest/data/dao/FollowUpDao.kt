@@ -34,6 +34,9 @@ interface FollowUpDao {
     @Query("UPDATE follow_ups SET completed = 1, completedAt = :completedAt WHERE id = :id")
     suspend fun markCompleted(id: String, completedAt: Long)
 
+    @Query("DELETE FROM follow_ups WHERE customerId = :customerId")
+    suspend fun deleteByCustomer(customerId: String)
+
     @Query("DELETE FROM follow_ups")
     suspend fun clearAll()
 }

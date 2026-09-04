@@ -20,6 +20,11 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
+/** zip 解包防护: 最多允许条目数, 防止 zip-bomb */
+private const val MAX_ENTRY_COUNT = 500
+/** zip 解包防护: 单条目最大字节数 (20MB), 防止解压撑爆内存 */
+private const val MAX_ENTRY_BYTES = 20L * 1024 * 1024
+
 /** 备份校验结果 */
 sealed class BackupValidationResult {
     data class Success(val data: BackupData) : BackupValidationResult()
@@ -145,9 +150,28 @@ class BackupService(private val db: AppDatabase) {
     private fun extractEntry(bytes: ByteArray, entryName: String): String? {
         ZipInputStream(ByteArrayInputStream(bytes)).use { zis ->
             var entry = zis.nextEntry
+            var count = 0
             while (entry != null) {
+                if (++count > MAX_ENTRY_COUNT) {
+                    throw IllegalStateException("备份条目数超限(> $MAX_ENTRY_COUNT), 疑似损坏/恶意文件")
+                }
                 if (entry.name == entryName) {
-                    return zis.readBytes().toString(Charsets.UTF_8)
+                    // 流式读取并限制单条目大小, 防止 zip-bomb 撑爆内存
+                    val out = ByteArrayOutputStream()
+                    val buf = ByteArray(8192)
+                    var total = 0L
+                    while (true) {
+                        val n = zis.read(buf)
+                        if (n < 0) break
+                        total += n
+                        if (total > MAX_ENTRY_BYTES) {
+                            throw IllegalStateException(
+                                "备份条目过大(> ${MAX_ENTRY_BYTES / 1024 / 1024}MB), 疑似损坏/恶意文件"
+                            )
+                        }
+                        out.write(buf, 0, n)
+                    }
+                    return out.toString(Charsets.UTF_8)
                 }
                 entry = zis.nextEntry
             }
@@ -173,11 +197,16 @@ class BackupService(private val db: AppDatabase) {
             db.dailySummaryDao().clearAll()
             db.executionRecordDao().clearAll()
 
+            val customerIds = data.customers.map { it.id }.toHashSet()
             data.settings.forEach { db.settingDao().set(SettingEntity(it.key, it.value)) }
             data.customers.forEach { db.customerDao().insertCustomer(it.toEntity()) }
-            data.customerEvents.forEach { db.eventDao().insertEvent(it.toEntity()) }
+            // 引用过滤: 事件/跟进若指向备份中不存在的客户则丢弃
+            // (历史版本曾因删除客户未级联产生孤儿数据, 恢复时不再引入)
+            data.customerEvents.filter { it.customerId in customerIds }
+                .forEach { db.eventDao().insertEvent(it.toEntity()) }
             data.xpRecords.forEach { db.xpDao().insertXp(it.toEntity()) }
-            data.followUps.forEach { db.followUpDao().insertFollowUp(it.toEntity()) }
+            data.followUps.filter { it.customerId in customerIds }
+                .forEach { db.followUpDao().insertFollowUp(it.toEntity()) }
             data.dailyTasks.forEach { db.taskDao().upsertTask(it.toEntity()) }
             data.userStats.forEach { db.statsDao().insertStats(it.toEntity()) }
             data.achievements.forEach { db.achievementDao().unlock(it.toEntity()) }

@@ -1,5 +1,6 @@
 package com.salesquest.sales_quest.services
 
+import androidx.room.withTransaction
 import com.salesquest.sales_quest.core.AppTasks
 import com.salesquest.sales_quest.core.DefaultTaskConfig
 import com.salesquest.sales_quest.core.SettingsKeys
@@ -71,6 +72,7 @@ data class DailyTaskConfig(
  */
 class DailyTaskService(
     private val db: AppDatabase,
+    private val xpService: XpService? = null,
     private val onDataChanged: () -> Unit = {}
 ) {
 
@@ -354,31 +356,70 @@ class DailyTaskService(
         return true
     }
 
-    /** 清除今日数据: 今日计数 + 任务 XP 标记 + 配置锁定/完成标记 + 今日任务行 (累计不受影响) */
+    /**
+     * 清除今日数据 (设置页-重置今日)
+     *
+     * 一个事务内完成, 保证一致性:
+     * 1. 今日计数 (见人/查询/成交)
+     * 2. 当日执行记录 (否则旧数据会从记录页"复活"回首页)
+     * 3. 任务 XP 发放标记 / 配置锁定 / 完成 / 额外奖励标记
+     * 4. 今日任务行
+     * 5. 重算累计总计 (修复重置后 TOTAL 虚高)
+     * 6. 回滚今日已发放 XP (修复清空后重复刷 XP), 由 XpService 处理
+     */
     suspend fun clearTodayData() {
         val dateKey = DateUtil.dateKey()
 
-        // 清除今日核心计数
-        db.settingDao().remove(SettingsKeys.peopleSeen(dateKey))
-        db.settingDao().remove(SettingsKeys.queries(dateKey))
-        db.settingDao().remove(SettingsKeys.deals(dateKey))
+        db.withTransaction {
+            // 1. 清除今日核心计数
+            db.settingDao().remove(SettingsKeys.peopleSeen(dateKey))
+            db.settingDao().remove(SettingsKeys.queries(dateKey))
+            db.settingDao().remove(SettingsKeys.deals(dateKey))
 
-        // 清除今日任务 XP 发放标记 (允许重新发放)
-        val all = db.settingDao().getAll()
-        for (setting in all) {
-            if (setting.key.startsWith("task_xp_") && setting.key.endsWith("_$dateKey")) {
-                db.settingDao().remove(setting.key)
+            // 2. 删除当日执行记录 (防止下次添加记录时旧数据复活)
+            db.executionRecordDao().deleteByDateKey(dateKey)
+
+            // 3. 清除今日任务 XP 发放标记 (允许重新发放)
+            val all = db.settingDao().getAll()
+            for (setting in all) {
+                if (setting.key.startsWith("task_xp_") && setting.key.endsWith("_$dateKey")) {
+                    db.settingDao().remove(setting.key)
+                }
+            }
+
+            // 4. 清除今日配置锁定/完成/额外奖励标记
+            db.settingDao().remove(SettingsKeys.taskConfig(dateKey, "locked"))
+            db.settingDao().remove(SettingsKeys.taskConfig(dateKey, "all_completed"))
+            db.settingDao().remove(SettingsKeys.dailyCompletion(dateKey))
+            db.settingDao().remove(SettingsKeys.dealExtraXpAwarded(dateKey))
+
+            // 5. 删除今日任务行 (执行度归零, 下次记录时自动重建)
+            db.taskDao().deleteByDate(dateKey)
+
+            // 6. 重算累计总计 (排除已清空的今日数据)
+            recalcTotalsFromSettings(db)
+
+            // 7. 回滚今日已发放 XP (删除今日记录 + totalXp 扣减 + 等级/连续作战重算)
+            xpService?.revokeTodayRewards()
+        }
+        onDataChanged()
+    }
+
+    /** 基于 settings 全部每日计数重算累计总计 (TOTAL_MEETS / TOTAL_QUERIES / TOTAL_DEALS) */
+    private suspend fun recalcTotalsFromSettings(db: AppDatabase) {
+        var totalMeets = 0
+        var totalQueries = 0
+        var totalDeals = 0
+        for (s in db.settingDao().getAll()) {
+            val v = s.value.toIntOrNull() ?: continue
+            when {
+                s.key.startsWith("people_seen_") -> totalMeets += v
+                s.key.startsWith("queries_") -> totalQueries += v
+                s.key.startsWith("deals_") -> totalDeals += v
             }
         }
-
-        // 清除今日配置锁定和完成标记 (允许重新设置)
-        db.settingDao().remove(SettingsKeys.taskConfig(dateKey, "locked"))
-        db.settingDao().remove(SettingsKeys.taskConfig(dateKey, "all_completed"))
-        db.settingDao().remove(SettingsKeys.dailyCompletion(dateKey))
-        db.settingDao().remove(SettingsKeys.dealExtraXpAwarded(dateKey))
-
-        // 删除今日任务行 (执行度归零, 下次记录时自动重建)
-        db.taskDao().deleteByDate(dateKey)
-        onDataChanged()
+        db.settingDao().setInt(SettingsKeys.TOTAL_MEETS, totalMeets)
+        db.settingDao().setInt(SettingsKeys.TOTAL_QUERIES, totalQueries)
+        db.settingDao().setInt(SettingsKeys.TOTAL_DEALS, totalDeals)
     }
 }
