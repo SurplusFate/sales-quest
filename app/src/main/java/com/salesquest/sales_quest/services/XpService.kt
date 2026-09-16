@@ -10,7 +10,6 @@ import com.salesquest.sales_quest.data.IdGenerator
 import com.salesquest.sales_quest.data.entity.SettingEntity
 import com.salesquest.sales_quest.data.entity.UserStatEntity
 import com.salesquest.sales_quest.data.entity.XpRecordEntity
-import kotlinx.coroutines.flow.firstOrNull
 
 /**
  * V1.0.0 XP 服务

@@ -175,6 +175,149 @@ class ExecutionRecordService(
         return db.executionRecordDao().getAllDates()
     }
 
+    // ==================== 累计值录入 (需求1) ====================
+
+    /**
+     * 某日"当前累计"基准
+     *
+     * 规则: 当天已有执行记录时以"记录之和"为准, 否则回退到 settings 中的旧数据。
+     * 这样既保证 累计 = 记录之和 的不变量, 又兼容历史数据 (旧总量来自 settings)。
+     */
+    data class DailyCumulative(
+        val peopleSeen: Int,
+        val queries: Int,
+        val deals: Int,
+        val fromRecords: Boolean
+    )
+
+    /** 累计值差值 (最新累计 - 当前累计) */
+    data class CumulativeDelta(
+        val peopleSeen: Int,
+        val queries: Int,
+        val deals: Int
+    ) {
+        val isZero: Boolean get() = peopleSeen == 0 && queries == 0 && deals == 0
+        val hasNegative: Boolean get() = peopleSeen < 0 || queries < 0 || deals < 0
+    }
+
+    /** 累计值录入结果 */
+    sealed class CumulativeApplyResult {
+        /** 数据未变化, 未写库 */
+        object NoChange : CumulativeApplyResult()
+
+        /** 已写入, 返回新记录 id 与本次差值 */
+        data class Saved(val recordId: String, val delta: CumulativeDelta) : CumulativeApplyResult()
+
+        /** 差值为负, 需要用户确认后才写入 */
+        data class NeedConfirm(val delta: CumulativeDelta) : CumulativeApplyResult()
+    }
+
+    /** 读取某日当前累计基准 */
+    suspend fun getDailyCumulative(dateKey: String): DailyCumulative {
+        val records = db.executionRecordDao().getByDate(dateKey)
+        if (records.isEmpty()) {
+            return DailyCumulative(
+                peopleSeen = db.settingDao().getInt(SettingsKeys.peopleSeen(dateKey)),
+                queries = db.settingDao().getInt(SettingsKeys.queries(dateKey)),
+                deals = db.settingDao().getInt(SettingsKeys.deals(dateKey)),
+                fromRecords = false
+            )
+        }
+        return DailyCumulative(
+            peopleSeen = records.sumOf { it.peopleSeen },
+            queries = records.sumOf { it.queries },
+            deals = records.sumOf { it.deals },
+            fromRecords = true
+        )
+    }
+
+    /** 纯计算差值 (不写库), 供 UI 实时预览与负值判定 */
+    suspend fun previewDelta(
+        dateKey: String,
+        latestPeopleSeen: Int,
+        latestQueries: Int,
+        latestDeals: Int
+    ): CumulativeDelta {
+        val base = getDailyCumulative(dateKey)
+        return CumulativeDelta(
+            peopleSeen = latestPeopleSeen - base.peopleSeen,
+            queries = latestQueries - base.queries,
+            deals = latestDeals - base.deals
+        )
+    }
+
+    /**
+     * 累计值录入: 用户填写"最新累计值", App 自动算差值并落一条执行记录
+     *
+     * 1. 最新累计值本身必须满足漏斗约束 (0 <= 成交 <= 查询 <= 见人), 否则抛 IllegalArgumentException
+     * 2. 差值为 0 → NoChange, 不写库
+     * 3. 差值为负且未确认 → NeedConfirm, 不写库; 确认后 allowNegative=true 再调用
+     * 4. 写入后按"记录之和"重算当天累计 (事务内), 因此 当天累计 == 用户填写的最新累计值
+     * 5. 今天的数据变化触发任务/XP/成就刷新, 并标记自动备份 dirty
+     */
+    suspend fun applyCumulativeInput(
+        dateKey: String,
+        recordTime: Long?,
+        timePrecision: String,
+        periodLabel: String?,
+        latestPeopleSeen: Int,
+        latestQueries: Int,
+        latestDeals: Int,
+        allowNegative: Boolean = false
+    ): CumulativeApplyResult {
+        // 最新累计值必须合法
+        FunnelValidator.validate(latestPeopleSeen, latestQueries, latestDeals)
+
+        val base = getDailyCumulative(dateKey)
+        val delta = CumulativeDelta(
+            peopleSeen = latestPeopleSeen - base.peopleSeen,
+            queries = latestQueries - base.queries,
+            deals = latestDeals - base.deals
+        )
+
+        if (delta.isZero) return CumulativeApplyResult.NoChange
+        if (delta.hasNegative && !allowNegative) return CumulativeApplyResult.NeedConfirm(delta)
+
+        val recordId = IdGenerator.gen("er_")
+        val now = System.currentTimeMillis()
+
+        db.withTransaction {
+            // 历史数据平滑过渡: 首次为某日期建档时, 用 settings 旧值创建基准记录
+            ensureBaseRecordIfNeeded(dateKey)
+
+            // 累积差值可能为负 (下调数据), 单条记录不做漏斗校验,
+            // 改由 recalculateDailyTotal 对"重算后的当天总量"做漏斗校验
+            db.executionRecordDao().insert(
+                ExecutionRecordEntity(
+                    id = recordId,
+                    dateKey = dateKey,
+                    recordTime = recordTime,
+                    timePrecision = timePrecision,
+                    periodLabel = periodLabel,
+                    peopleSeen = delta.peopleSeen,
+                    queries = delta.queries,
+                    deals = delta.deals,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
+
+            recalculateDailyTotal(dateKey)
+        }
+
+        // 今天: 触发任务/XP/成就
+        if (dateKey == DateUtil.dateKey() && quickActionService != null) {
+            try {
+                quickActionService.refreshAfterDataChange()
+            } catch (e: Exception) {
+                AppLogger.error("ExecutionRecordService", "触发任务/XP刷新失败: ${e.message}", e.stackTraceToString())
+            }
+        }
+
+        onDataChanged()
+        return CumulativeApplyResult.Saved(recordId, delta)
+    }
+
     /**
      * 首次为某日期添加记录时, 若 settings 已有数据, 自动创建 DAILY_TOTAL 基准记录
      *

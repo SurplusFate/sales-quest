@@ -1,6 +1,7 @@
 package com.salesquest.sales_quest.services
 
 import com.salesquest.sales_quest.core.AppLogger
+import com.salesquest.sales_quest.data.DateUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -9,7 +10,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -149,6 +149,7 @@ class AutoBackupManager(
                     dirty.set(false)
                     retryCount.set(0)
                     configStore.setPendingBackup(false)
+                    configStore.setLastBackupDateKey(DateUtil.dateKey())
                     lastBackupResult = BackupOutcome.Success
                     AppLogger.info("AutoBackupManager", "备份成功, dirty=false (version=$currentVersion)")
                 } else {
@@ -192,6 +193,44 @@ class AutoBackupManager(
      * 启动补偿: 上次进程退出前存在未完成的备份 (pending 标记) 时重新触发。
      * 覆盖"录完数据 → 进程被系统回收 → 延迟协程消失 → 备份永不发生"的丢失路径。
      */
+    /**
+     * 每天第一次打开 App 时自动备份一次 (需求3), 并保留原有的 dirty 补传逻辑
+     *
+     * 判定依据: 持久化的"最近成功备份日期" (LAST_BACKUP_DATE_KEY) 与今天是否一致
+     * - 今天尚未备份过 → 立即触发一次备份 (不走 2 分钟防抖), 成功后写入日期
+     * - 今天已备份过 → 仅检查是否存在进程被杀导致的未完成备份 (resumeIfPending)
+     * - 未开启自动备份 / 未配置 WebDAV → 仅做 dirty 补传检查
+     */
+    fun onAppStart() {
+        try {
+            val config = configStore.load()
+            if (!config.autoBackup || !config.isConfigured()) {
+                resumeIfPending()
+                return
+            }
+
+            val today = DateUtil.dateKey()
+            if (configStore.lastBackupDateKey() == today) {
+                AppLogger.info("AutoBackupManager", "今日已自动备份过, 仅检查未完成备份")
+                resumeIfPending()
+                return
+            }
+
+            AppLogger.info("AutoBackupManager", "每日首次启动: 触发自动备份")
+            dirty.set(true)
+            configStore.setPendingBackup(true)
+            dataChangeVersion.incrementAndGet()
+
+            if (delayMs > 0) {
+                val newJob = scope.launch { executeBackup() }
+                val oldJob = delayJobRef.getAndSet(newJob)
+                oldJob?.cancel()
+            }
+        } catch (e: Exception) {
+            AppLogger.error("AutoBackupManager", "每日首次备份触发失败: ${e.message}", e.stackTraceToString())
+        }
+    }
+
     fun resumeIfPending() {
         try {
             if (configStore.isPendingBackup()) {

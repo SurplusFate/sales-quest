@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -19,10 +18,8 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,12 +46,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.data.CustomerStage
-import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.data.Operator
 import com.salesquest.sales_quest.data.entity.CustomerEntity
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 /** 客户详情页 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,6 +108,7 @@ fun CustomerDetailPage(
             title = { Text("删除客户") },
             text = { Text("确认删除此客户？此操作不可撤销。") },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(
                     onClick = {
                         showDeleteConfirm = false

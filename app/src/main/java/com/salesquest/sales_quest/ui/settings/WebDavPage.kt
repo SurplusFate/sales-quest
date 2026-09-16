@@ -47,6 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 /**
  * 坚果云 WebDAV 云备份页
@@ -244,6 +245,7 @@ fun WebDavPage(
             title = { Text("恢复备份") },
             text = { Text("恢复备份会覆盖当前数据, 请确认已经备份当前数据。\n\n确定恢复 $filename 吗?") },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(onClick = {
                     confirmRestore = null
                     viewModel.restore(filename)

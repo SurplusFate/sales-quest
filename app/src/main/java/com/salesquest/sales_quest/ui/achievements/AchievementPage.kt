@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.services.AchievementStatus
+import com.salesquest.sales_quest.ui.theme.dockContentBottomPadding
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -127,7 +128,7 @@ fun AchievementPage(
                     onClick = onOpenXpLevel,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = dockContentBottomPadding())
                         .height(48.dp)
                 ) {
                     Icon(Icons.Filled.MilitaryTech, contentDescription = null)
@@ -208,7 +209,9 @@ fun AchievementGridCard(status: AchievementStatus) {
     }
 }
 
+private val achievementDateFormat =
+    SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+
 private fun formatDate(ts: Long): String {
-    val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
-    return "${sdf.format(Date(ts))} 解锁"
+    return "${achievementDateFormat.format(Date(ts))} 解锁"
 }

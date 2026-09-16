@@ -1,7 +1,5 @@
 package com.salesquest.sales_quest.ui.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +17,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -54,6 +51,7 @@ import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.services.ExecutionRecordService
 import kotlinx.coroutines.launch
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 /**
  * 执行记录录入面板 — 分段执行记录的核心入口
@@ -88,6 +86,32 @@ fun ExecutionRecordSheet(
     var selectedMinute by remember { mutableStateOf(30) }
     var periodLabel by remember { mutableStateOf("上午") }
     var addedCount by remember { mutableStateOf(0) }
+    var base by remember { mutableStateOf<ExecutionRecordService.DailyCumulative?>(null) }
+    var reloadTick by remember { mutableStateOf(0) }
+    var pendingNegativeDelta by remember { mutableStateOf<ExecutionRecordService.CumulativeDelta?>(null) }
+
+    // 加载该日期"当前累计值"并回填输入框 (累计值录入语义)
+    LaunchedEffect(selectedDateKey, reloadTick) {
+        val loaded = AppContainer.executionRecordService.getDailyCumulative(selectedDateKey)
+        base = loaded
+        meetText = loaded.peopleSeen.toString()
+        queryText = loaded.queries.toString()
+        dealText = loaded.deals.toString()
+    }
+
+    val parsedMeet = meetText.trim().toIntOrNull()
+    val parsedQuery = queryText.trim().toIntOrNull()
+    val parsedDeal = dealText.trim().toIntOrNull()
+    val currentBase = base
+    val deltaPreview = if (currentBase != null && parsedMeet != null && parsedQuery != null && parsedDeal != null) {
+        ExecutionRecordService.CumulativeDelta(
+            peopleSeen = parsedMeet - currentBase.peopleSeen,
+            queries = parsedQuery - currentBase.queries,
+            deals = parsedDeal - currentBase.deals
+        )
+    } else {
+        null
+    }
 
     val title = if (isHistorical) "补录执行记录" else "本次执行记录"
 
@@ -116,7 +140,7 @@ fun ExecutionRecordSheet(
             // === 正常模式: 只显示提示 ===
             Spacer(Modifier.height(4.dp))
             Text(
-                "输入这段时间新增的数据, 保存后自动记录当前时间",
+                "填写当前最新累计值, 保存后自动计算差值并记入执行记录",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -225,89 +249,130 @@ fun ExecutionRecordSheet(
         Spacer(Modifier.height(10.dp))
         ExecInputField(dealText, { dealText = it }, "成交数", Icons.Filled.Celebration, Color(0xFFF44336), "单")
 
+        // === 当前累计 + 本次差值预览 ===
+        val baseInfo = currentBase
+        if (baseInfo != null) {
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "当前累计  见人 ${baseInfo.peopleSeen} · 查询 ${baseInfo.queries} · 成交 ${baseInfo.deals}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        val deltaInfo = deltaPreview
+        if (deltaInfo != null) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                if (deltaInfo.isZero) {
+                    "本次差值: 无变化 (不会产生记录)"
+                } else {
+                    "本次将记录差值: 见人 ${formatDelta(deltaInfo.peopleSeen)} / 查询 ${formatDelta(deltaInfo.queries)} / 成交 ${formatDelta(deltaInfo.deals)}" +
+                        if (deltaInfo.hasNegative) " (含下调)" else ""
+                },
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (deltaInfo.hasNegative) Color(0xFFE65100) else Color(0xFF2E7D32)
+            )
+        }
+
         Spacer(Modifier.height(20.dp))
-        Button(
-            onClick = {
-                if (saving) return@Button
-                val error = validateExecEntry(meetText, queryText, dealText)
-                if (error != null) {
-                    scope.launch { snackbarHostState.showSnackbar(error) }
-                    return@Button
-                }
-                saving = true
-                scope.launch {
-                    try {
-                        val meet = meetText.trim().toInt()
-                        val query = queryText.trim().toInt()
-                        val deal = dealText.trim().toInt()
 
-                        val recordTime: Long?
-                        val precision: String
-                        val pLabel: String?
+        fun doSave(allowNegative: Boolean) {
+            if (saving) return
+            val error = validateExecEntry(meetText, queryText, dealText)
+            if (error != null) {
+                scope.launch { snackbarHostState.showSnackbar(error) }
+                return
+            }
+            saving = true
+            scope.launch {
+                try {
+                    val meet = meetText.trim().toInt()
+                    val query = queryText.trim().toInt()
+                    val deal = dealText.trim().toInt()
 
-                        if (isHistorical) {
-                            precision = timePrecision
-                            pLabel = when (timePrecision) {
-                                ExecutionRecordService.PRECISION_EXACT -> {
-                                    val parsed = DateUtil.parseDateKeyToCalendar(selectedDateKey)
-                                    val cal = java.util.Calendar.getInstance().apply {
-                                        clear()
-                                        set(
-                                            parsed.get(java.util.Calendar.YEAR),
-                                            parsed.get(java.util.Calendar.MONTH),
-                                            parsed.get(java.util.Calendar.DAY_OF_MONTH),
-                                            selectedHour,
-                                            selectedMinute, 0
-                                        )
-                                    }
-                                    recordTime = cal.timeInMillis
-                                    null
+                    val recordTime: Long?
+                    val precision: String
+                    val pLabel: String?
+
+                    if (isHistorical) {
+                        precision = timePrecision
+                        pLabel = when (timePrecision) {
+                            ExecutionRecordService.PRECISION_EXACT -> {
+                                val parsed = DateUtil.parseDateKeyToCalendar(selectedDateKey)
+                                val cal = java.util.Calendar.getInstance().apply {
+                                    clear()
+                                    set(
+                                        parsed.get(java.util.Calendar.YEAR),
+                                        parsed.get(java.util.Calendar.MONTH),
+                                        parsed.get(java.util.Calendar.DAY_OF_MONTH),
+                                        selectedHour,
+                                        selectedMinute, 0
+                                    )
                                 }
-                                ExecutionRecordService.PRECISION_PERIOD -> {
-                                    recordTime = null
-                                    periodLabel
-                                }
-                                else -> {
-                                    recordTime = null
-                                    null
-                                }
+                                recordTime = cal.timeInMillis
+                                null
                             }
-                        } else {
-                            precision = ExecutionRecordService.PRECISION_EXACT
-                            recordTime = System.currentTimeMillis()
-                            pLabel = null
+                            ExecutionRecordService.PRECISION_PERIOD -> {
+                                recordTime = null
+                                periodLabel
+                            }
+                            else -> {
+                                recordTime = null
+                                null
+                            }
                         }
-
-                        AppContainer.executionRecordService.addRecord(
-                            dateKey = selectedDateKey,
-                            recordTime = recordTime,
-                            timePrecision = precision,
-                            periodLabel = pLabel,
-                            peopleSeen = meet,
-                            queries = query,
-                            deals = deal
-                        )
-
-                        if (isHistorical) {
-                            // 补录模式: 清空输入, 继续添加
-                            meetText = "0"
-                            queryText = "0"
-                            dealText = "0"
-                            addedCount++
-                            snackbarHostState.showSnackbar("已保存 (第 $addedCount 条)")
-                        } else {
-                            snackbarHostState.showSnackbar("已保存")
-                            onDone()
-                        }
-                    } catch (e: IllegalArgumentException) {
-                        snackbarHostState.showSnackbar(e.message ?: "保存失败")
-                    } catch (e: Exception) {
-                        snackbarHostState.showSnackbar("保存失败: ${e.message}")
-                    } finally {
-                        saving = false
+                    } else {
+                        precision = ExecutionRecordService.PRECISION_EXACT
+                        recordTime = System.currentTimeMillis()
+                        pLabel = null
                     }
+
+                    val result = AppContainer.executionRecordService.applyCumulativeInput(
+                        dateKey = selectedDateKey,
+                        recordTime = recordTime,
+                        timePrecision = precision,
+                        periodLabel = pLabel,
+                        latestPeopleSeen = meet,
+                        latestQueries = query,
+                        latestDeals = deal,
+                        allowNegative = allowNegative
+                    )
+
+                    when (result) {
+                        is ExecutionRecordService.CumulativeApplyResult.Saved -> {
+                            if (isHistorical) {
+                                // 补录模式: 基准刷新为刚录入的最新累计值, 可继续录入
+                                reloadTick++
+                                addedCount++
+                                snackbarHostState.showSnackbar(
+                                    "已保存 (第 $addedCount 条), 本次差值 ${formatDeltaTriple(result.delta)}"
+                                )
+                            } else {
+                                snackbarHostState.showSnackbar("已保存, 本次差值 ${formatDeltaTriple(result.delta)}")
+                                onDone()
+                            }
+                        }
+                        is ExecutionRecordService.CumulativeApplyResult.NoChange -> {
+                            snackbarHostState.showSnackbar("数据未变化, 未产生记录")
+                            if (!isHistorical) onDone()
+                        }
+                        is ExecutionRecordService.CumulativeApplyResult.NeedConfirm -> {
+                            pendingNegativeDelta = result.delta
+                        }
+                    }
+                } catch (e: IllegalArgumentException) {
+                    snackbarHostState.showSnackbar(e.message ?: "保存失败")
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("保存失败: ${e.message}")
+                } finally {
+                    saving = false
                 }
-            },
+            }
+        }
+
+        Button(
+            onClick = { doSave(false) },
             enabled = !saving,
             modifier = Modifier
                 .fillMaxWidth()
@@ -330,6 +395,31 @@ fun ExecutionRecordSheet(
             ) { Text("完成") }
         }
 
+        // === 数值下调确认对话框 ===
+        pendingNegativeDelta?.let { delta ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { pendingNegativeDelta = null },
+                title = { Text("数值下调确认") },
+                text = {
+                    DialogScrimAdjuster()
+                    Text(
+                        "本次录入低于当前累计值, 将记录负差值:\n" +
+                            "见人 ${formatDelta(delta.peopleSeen)} / 查询 ${formatDelta(delta.queries)} / 成交 ${formatDelta(delta.deals)}\n\n" +
+                            "确认后本条记录会立即写入执行记录, 当天累计将同步下调。"
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        pendingNegativeDelta = null
+                        doSave(true)
+                    }) { Text("确认保存") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingNegativeDelta = null }) { Text("取消") }
+                }
+            )
+        }
+
         Spacer(Modifier.height(20.dp))
         SnackbarHost(snackbarHostState)
     }
@@ -342,6 +432,7 @@ fun ExecutionRecordSheet(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         selectedDateKey = DateUtil.dateKeyFromUtc(millis)
@@ -367,6 +458,7 @@ fun ExecutionRecordSheet(
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showTimePicker = false },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(onClick = {
                     selectedHour = timePickerState.hour
                     selectedMinute = timePickerState.minute
@@ -380,6 +472,13 @@ fun ExecutionRecordSheet(
         )
     }
 }
+
+/** 差值显示: 正数带 +, 负数带 - */
+internal fun formatDelta(value: Int): String = if (value >= 0) "+$value" else value.toString()
+
+/** 差值三元组显示 */
+internal fun formatDeltaTriple(delta: ExecutionRecordService.CumulativeDelta): String =
+    "见人 ${formatDelta(delta.peopleSeen)} / 查询 ${formatDelta(delta.queries)} / 成交 ${formatDelta(delta.deals)}"
 
 /** 执行记录数据输入校验 (含销售漏斗约束) */
 internal fun validateExecEntry(meetText: String, queryText: String, dealText: String): String? {

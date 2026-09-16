@@ -116,10 +116,12 @@ class HomeViewModel : ViewModel() {
 
     companion object {
         /** 执行记录时间标签格式化 */
+        private val timeLabelFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+
         internal fun formatTimeLabel(entity: ExecutionRecordEntity): String = when (entity.timePrecision) {
             ExecutionRecordService.PRECISION_EXACT -> {
                 entity.recordTime?.let {
-                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it))
+                    timeLabelFormat.format(Date(it))
                 } ?: "未知时间"
             }
             ExecutionRecordService.PRECISION_PERIOD -> entity.periodLabel ?: "时段"

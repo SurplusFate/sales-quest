@@ -55,7 +55,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.data.DateUtil
+import com.salesquest.sales_quest.ui.theme.accentForDark
 import kotlinx.coroutines.launch
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
+import com.salesquest.sales_quest.ui.theme.dockContentBottomPadding
 
 /** 数据分析页 - 今日/本周/本月/累计 + 任意历史日期查看/录入/修改 + 总结入口 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,7 +114,7 @@ fun AnalyticsPage(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 16.dp)
+                .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = dockContentBottomPadding())
         ) {
             // === 时间切换 ===
             TimeToggle(selectedIndex = tabIndex) { tabIndex = it }
@@ -218,6 +221,7 @@ fun AnalyticsPage(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         val key = DateUtil.dateKeyFromUtc(millis)
@@ -295,6 +299,7 @@ internal fun EditMetricDialog(
         onDismissRequest = onDismiss,
         title = { Text("修改 ${request.label}") },
         text = {
+            DialogScrimAdjuster()
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
@@ -340,9 +345,11 @@ fun TimeToggle(selectedIndex: Int, onChanged: (Int) -> Unit) {
 @Composable
 fun ExecutionRateCard(rate: Double) {
     val percent = (rate * 100).coerceIn(0.0, 100.0).toInt()
-    val color = if (rate >= 0.8) Color(0xFF4CAF50)
-    else if (rate >= 0.5) Color(0xFFFF9800)
-    else Color(0xFFF44336)
+    val color = accentForDark(
+        if (rate >= 0.8) Color(0xFF4CAF50)
+        else if (rate >= 0.5) Color(0xFFFF9800)
+        else Color(0xFFF44336)
+    )
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -425,9 +432,10 @@ fun StatCell(
             .let { if (editable) it.clickable(onClick = onClick) else it },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+        val accent = accentForDark(color)
+        Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.height(4.dp))
-        Text("$value", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color)
+        Text("$value", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = accent)
         Spacer(Modifier.height(2.dp))
         Text(label, style = MaterialTheme.typography.labelSmall)
     }
@@ -447,14 +455,16 @@ fun RateTile(label: String, formula: String, numerator: Int, denominator: Int) {
 
     if (denominator == 0) {
         valueText = "暂无数据"
-        valueColor = MaterialTheme.colorScheme.outline
+        valueColor = MaterialTheme.colorScheme.onSurfaceVariant
         subtitle = formula
     } else {
         val rate = numerator.toDouble() / denominator
         valueText = String.format("%.1f%%", rate * 100)
-        valueColor = if (rate >= 0.5) Color(0xFF4CAF50)
-        else if (rate >= 0.2) Color(0xFFFF9800)
-        else Color(0xFFF44336)
+        valueColor = accentForDark(
+            if (rate >= 0.5) Color(0xFF4CAF50)
+            else if (rate >= 0.2) Color(0xFFFF9800)
+            else Color(0xFFF44336)
+        )
         subtitle = "$numerator ÷ $denominator"
     }
 

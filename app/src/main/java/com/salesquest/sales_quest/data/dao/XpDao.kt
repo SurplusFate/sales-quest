@@ -37,6 +37,15 @@ interface XpDao {
     @Query("SELECT * FROM xp_records ORDER BY createdAt DESC LIMIT :limit")
     fun watchRecent(limit: Int = 20): Flow<List<XpRecordEntity>>
 
+    @Query(
+        "SELECT COUNT(*) FROM xp_records WHERE actionType = :actionType " +
+            "AND createdAt >= :start AND createdAt < :end"
+    )
+    suspend fun countActionTypeInRange(actionType: String, start: Long, end: Long): Int
+
+    @Query("DELETE FROM xp_records WHERE createdAt >= :start AND createdAt < :end")
+    suspend fun deleteByCreatedAtRange(start: Long, end: Long)
+
     @Query("DELETE FROM xp_records")
     suspend fun clearAll()
 }

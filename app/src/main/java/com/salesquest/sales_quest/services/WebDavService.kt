@@ -35,19 +35,20 @@ data class WebDavConfig(
  * WebDAV 配置存储
  * 密码使用 EncryptedSharedPreferences (Android Keystore) 加密保存, 不落明文
  */
-class WebDavConfigStore(context: Context) {
+class WebDavConfigStore(private val context: Context) {
 
-    /** 实际存储对象; 加密创建失败时回退普通 prefs */
-    private val prefs: SharedPreferences
+    /**
+     * 实际存储对象; 加密创建失败时回退普通 prefs
+     *
+     * 延迟创建 (需求4 启动优化): EncryptedSharedPreferences 首次创建需要访问 Android Keystore,
+     * 放在 Application.onCreate 同步执行会拖慢冷启动; 改为首次真正读写时再初始化。
+     */
+    private val prefsHolder: Pair<SharedPreferences, Boolean> by lazy { createEncryptedPrefs(context) }
+
+    private val prefs: SharedPreferences get() = prefsHolder.first
 
     /** 密码是否经 Keystore 加密存储 (false 表示降级明文, 存在安全风险) */
-    val isPasswordStorageSecure: Boolean
-
-    init {
-        val result = createEncryptedPrefs(context)
-        prefs = result.first
-        isPasswordStorageSecure = result.second
-    }
+    val isPasswordStorageSecure: Boolean get() = prefsHolder.second
 
     private fun createEncryptedPrefs(context: Context): Pair<SharedPreferences, Boolean> {
         return try {
@@ -108,6 +109,13 @@ class WebDavConfigStore(context: Context) {
 
     fun setLastBackupAt(time: Long) {
         prefs.edit().putLong(BackupKeys.LAST_BACKUP_AT, time).apply()
+    }
+
+    /** 最近一次成功自动备份的日期 (yyyy-MM-dd), 空串表示从未备份 */
+    fun lastBackupDateKey(): String = prefs.getString(BackupKeys.LAST_BACKUP_DATE_KEY, "") ?: ""
+
+    fun setLastBackupDateKey(dateKey: String) {
+        prefs.edit().putString(BackupKeys.LAST_BACKUP_DATE_KEY, dateKey).apply()
     }
 
     /** 是否有待完成的备份 (持久化, 进程被杀后重启可补偿) */
@@ -289,9 +297,9 @@ open class WebDavService(
             val dbBytes = backupService.readDatabaseFileBytes()
             val zipBytes = backupService.createBackupZip(data, dbBytes)
 
-            val filename = BackupKeys.BACKUP_FILENAME_PREFIX + java.text.SimpleDateFormat(
-                "yyyy-MM-dd_HHmmss", java.util.Locale.US
-            ).format(java.util.Date()) + BackupKeys.DB_BACKUP_SUFFIX + ".zip"
+            val filename = BackupKeys.BACKUP_FILENAME_PREFIX + backupTimeFormat.format(
+                java.util.Date()
+            ) + BackupKeys.DB_BACKUP_SUFFIX + ".zip"
 
             val request = Request.Builder()
                 .url(joinUrl(config.url, joinDir(config.dir, filename)))

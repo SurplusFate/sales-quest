@@ -7,8 +7,6 @@ import com.salesquest.sales_quest.core.LevelRequirement
 import com.salesquest.sales_quest.core.SettingsKeys
 import com.salesquest.sales_quest.data.AppDatabase
 import com.salesquest.sales_quest.data.entity.LevelRequirementEntity
-import com.salesquest.sales_quest.data.entity.UserStatEntity
-import com.salesquest.sales_quest.data.entity.XpRecordEntity
 
 /** 单条晋级条件进度 */
 data class RequirementProgress(

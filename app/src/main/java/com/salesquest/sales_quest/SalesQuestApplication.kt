@@ -30,10 +30,11 @@ class SalesQuestApplication : Application() {
             }
         }
 
-        // 自动备份改为数据变化触发 (AutoBackupManager); 启动时补偿上次进程退出前未完成的备份
+        // 自动备份: 数据变化触发 (AutoBackupManager) + 每天首次打开备份一次;
+        // 同时补偿上次进程退出前未完成的备份 (dirty 补传)
         appScope.launch {
             try {
-                AppContainer.autoBackupManager.resumeIfPending()
+                AppContainer.autoBackupManager.onAppStart()
             } catch (e: Exception) {
                 AppLogger.error("App", "恢复待备份失败: $e")
             }

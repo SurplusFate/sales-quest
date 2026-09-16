@@ -6,11 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.data.entity.CustomerEntity
 import com.salesquest.sales_quest.data.entity.FollowUpEntity
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /** 客户详情 ViewModel */
 class CustomerDetailViewModel(private val customerId: String) : ViewModel() {

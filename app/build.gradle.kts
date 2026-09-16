@@ -10,14 +10,14 @@ plugins {
 
 android {
     namespace = "com.salesquest.sales_quest"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.salesquest.sales_quest"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 22
-        versionName = "1.0.20"
+        targetSdk = 36
+        versionCode = 41
+        versionName = "1.0.39"
     }
 
     // 读取签名配置: 优先从 keystore.properties 读取, 不存在则回退 debug 签名
@@ -59,10 +59,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -72,6 +68,12 @@ android {
         unitTests {
             isIncludeAndroidResources = true
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -110,6 +112,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+    implementation(libs.kyant0.backdrop)
     implementation(libs.security.crypto)
 
     testImplementation(libs.junit)

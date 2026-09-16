@@ -5,14 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.data.entity.ExecutionRecordEntity
-import com.salesquest.sales_quest.services.ExecutionRecordService
 import com.salesquest.sales_quest.ui.BattleStats
 import com.salesquest.sales_quest.ui.ExecutionRecordUi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn

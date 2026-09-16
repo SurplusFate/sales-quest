@@ -1,13 +1,13 @@
 [versions]
-agp = "8.5.2"
-kotlin = "2.0.20"
-ksp = "2.0.20-1.0.25"
+agp = "8.13.2"
+kotlin = "2.3.21"
+ksp = "2.3.12"
 coreKtx = "1.13.1"
 lifecycle = "2.8.6"
 activityCompose = "1.9.2"
-composeBom = "2024.09.03"
+composeBom = "2026.03.01"
 navigationCompose = "2.8.1"
-room = "2.6.1"
+room = "2.8.5"
 coroutines = "1.8.1"
 junit = "4.13.2"
 androidxJunit = "1.2.1"
@@ -18,6 +18,7 @@ androidxTestCore = "1.6.1"
 coroutinesTest = "1.8.1"
 okhttp = "4.12.0"
 securityCrypto = "1.1.0-alpha06"
+backdrop = "1.0.6"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,6 +50,7 @@ androidx-test-core = { group = "androidx.test", name = "core-ktx", version.ref =
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+kyant0-backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

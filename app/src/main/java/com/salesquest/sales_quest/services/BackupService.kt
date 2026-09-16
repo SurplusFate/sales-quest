@@ -15,7 +15,6 @@ import com.salesquest.sales_quest.data.entity.UserStatEntity
 import com.salesquest.sales_quest.data.entity.XpRecordEntity
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream

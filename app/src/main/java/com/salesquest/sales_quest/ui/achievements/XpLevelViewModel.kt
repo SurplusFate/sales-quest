@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.core.SettingsKeys
-import com.salesquest.sales_quest.data.entity.SettingEntity
 import com.salesquest.sales_quest.services.LevelService
 import com.salesquest.sales_quest.services.LevelProgress
 import kotlinx.coroutines.flow.SharingStarted
@@ -12,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /** 等级页 ViewModel - 晋级条件进度 (响应式, 数据变化时自动刷新) */
 class XpLevelViewModel : ViewModel() {

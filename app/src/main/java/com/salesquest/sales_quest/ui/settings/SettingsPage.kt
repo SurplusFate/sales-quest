@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -48,6 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.BuildConfig
 import com.salesquest.sales_quest.data.AppDatabase
 import kotlinx.coroutines.launch
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 /** 设置页 - 数据 / 云备份 / 应用 三个区域 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -166,6 +166,7 @@ fun SettingsPage(
             title = { Text("清除今日数据") },
             text = { Text("将清除今天的见人 / 查询 / 成交数据及今日任务进度。\n累计数据不受影响。") },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(
                     onClick = {
                         showClearTodayDialog = false
@@ -192,6 +193,7 @@ fun SettingsPage(
             title = { Text("清除所有数据") },
             text = { Text("这将永久删除所有客户、记录、XP 和成就, 且不可撤销!") },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(
                     onClick = {
                         showClearAllDialog = false
@@ -217,6 +219,7 @@ fun SettingsPage(
             onDismissRequest = { showAboutDialog = false },
             title = { Text("关于 Sales Quest") },
             text = {
+                DialogScrimAdjuster()
                 Column {
                     Text("Sales Quest", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))

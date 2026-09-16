@@ -42,9 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.services.DailySummary
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 /**
  * 总结页 - 每日总结 + 周期总结
@@ -231,6 +229,7 @@ fun SummaryPage(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(onClick = {
                     val picked = datePickerState.selectedDateMillis
                     if (picked != null) {

@@ -1,7 +1,6 @@
 package com.salesquest.sales_quest.ui.customers
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,7 +22,6 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PeopleOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,10 +39,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.data.CustomerStage
 import com.salesquest.sales_quest.data.Operator
 import com.salesquest.sales_quest.data.entity.CustomerEntity
+import com.salesquest.sales_quest.ui.theme.dockContentBottomPadding
 
 /** 客户列表页 - 只展示值得跟进的客户 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,7 +90,9 @@ fun CustomerListPage(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(
+                    start = 12.dp, top = 8.dp, end = 12.dp, bottom = dockContentBottomPadding()
+                )
             ) {
                 items(customers, key = { it.id }) { customer ->
                     CustomerTile(customer = customer, onClick = { onOpenCustomer(customer.id) })

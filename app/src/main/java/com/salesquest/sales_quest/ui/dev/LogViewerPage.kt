@@ -60,18 +60,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.core.AppLogger
 import com.salesquest.sales_quest.core.LogEntry
 import com.salesquest.sales_quest.core.LogLevel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 /** 运行日志页 - 查看 / 搜索 / 过滤 / 复制 / 清空 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -215,6 +214,7 @@ fun LogViewerPage(
             title = { Text("清空日志") },
             text = { Text("确定要清空所有日志吗？此操作不可撤销。") },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(
                     onClick = {
                         AppLogger.clear()
@@ -327,7 +327,7 @@ fun LogCard(entry: LogEntry) {
                 Text(
                     time,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF757575),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = FontFamily.Monospace
                 )
                 Spacer(Modifier.width(6.dp))
@@ -364,7 +364,7 @@ fun LogCard(entry: LogEntry) {
                 Text(
                     entry.stackTrace,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF616161),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = FontFamily.Monospace,
                     maxLines = 8,
                     overflow = TextOverflow.Ellipsis
@@ -380,6 +380,7 @@ fun ExportLogDialog(text: String, onDismiss: () -> Unit, onCopy: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text("导出日志") },
         text = {
+            DialogScrimAdjuster()
             Column {
                 Text("使用「复制全部」获取完整日志。", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(8.dp))

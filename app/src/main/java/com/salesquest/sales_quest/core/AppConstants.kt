@@ -192,6 +192,9 @@ object BackupKeys {
     const val WEBDAV_DIR = "webdav_dir"
     const val AUTO_BACKUP_ENABLED = "auto_backup_enabled"
     const val LAST_BACKUP_AT = "last_backup_at"
+
+    /** 最近一次成功自动备份的日期 (yyyy-MM-dd), 用于"每天首次打开备份一次" */
+    const val LAST_BACKUP_DATE_KEY = "last_backup_date_key"
     const val PENDING_BACKUP = "pending_backup"
     const val BACKUP_FILENAME_PREFIX = "sales_quest_backup_"
     const val DB_BACKUP_SUFFIX = ".db"

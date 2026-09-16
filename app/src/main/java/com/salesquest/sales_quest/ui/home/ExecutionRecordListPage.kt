@@ -1,9 +1,9 @@
 package com.salesquest.sales_quest.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,12 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -34,7 +33,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,13 +58,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.services.FunnelValidator
 import com.salesquest.sales_quest.ui.ExecutionRecordUi
+import com.salesquest.sales_quest.ui.theme.accentForDark
 import kotlinx.coroutines.launch
+import com.salesquest.sales_quest.ui.theme.appScrim
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 /**
  * 执行记录列表页 — 查看某天的全部执行记录 + 编辑/删除/补录
@@ -103,76 +103,81 @@ fun ExecutionRecordListPage(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        Column(
+        // 执行记录可能很多: 使用 LazyColumn 惰性渲染 (需求4 性能优化, 避免纵向 Column 全量组合)
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 24.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // === 日期选择 ===
-            DateSelectorBar(
-                dateKey = selectedDateKey,
-                onClick = { showDatePicker = true }
-            )
-
-            Spacer(Modifier.height(12.dp))
+            item {
+                DateSelectorBar(
+                    dateKey = selectedDateKey,
+                    onClick = { showDatePicker = true }
+                )
+            }
 
             // === 当天累计 ===
-            DailyTotalCard(
-                people = dailyTotal.peopleSeen,
-                queries = dailyTotal.queries,
-                deals = dailyTotal.deals,
-                recordCount = records.size
-            )
-
-            Spacer(Modifier.height(16.dp))
+            item {
+                DailyTotalCard(
+                    people = dailyTotal.peopleSeen,
+                    queries = dailyTotal.queries,
+                    deals = dailyTotal.deals,
+                    recordCount = records.size
+                )
+            }
 
             // === 记录列表 ===
             if (records.isEmpty()) {
-                EmptyRecordsCard()
+                item { EmptyRecordsCard() }
             } else {
-                records.forEach { record ->
+                items(records, key = { it.id }) { record ->
                     ExecutionRecordRow(
                         record = record,
                         onEdit = { editRecord = record },
                         onDelete = { deleteRecord = record }
                     )
-                    Spacer(Modifier.height(8.dp))
                 }
             }
 
             // === 添加按钮 ===
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { showAddSheet = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("添加执行记录")
+            item {
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { showAddSheet = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("添加执行记录")
+                }
             }
 
             // === 历史日期 ===
             if (allDates.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
-                Text(
-                    "历史日期",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.height(8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(allDates) { date ->
-                        DateChip(
-                            dateKey = date,
-                            isSelected = date == selectedDateKey,
-                            onClick = { viewModel.selectDate(date) }
-                        )
+                item {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "历史日期",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                item {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(allDates) { date ->
+                            DateChip(
+                                dateKey = date,
+                                isSelected = date == selectedDateKey,
+                                onClick = { viewModel.selectDate(date) }
+                            )
+                        }
                     }
                 }
             }
@@ -187,6 +192,7 @@ fun ExecutionRecordListPage(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         viewModel.selectDate(DateUtil.dateKeyFromUtc(millis))
@@ -206,6 +212,7 @@ fun ExecutionRecordListPage(
     if (showAddSheet) {
         val sheetState = rememberModalBottomSheetState()
         ModalBottomSheet(
+            scrimColor = appScrim(),
             onDismissRequest = { showAddSheet = false },
             sheetState = sheetState
         ) {
@@ -244,6 +251,7 @@ fun ExecutionRecordListPage(
             onDismissRequest = { deleteRecord = null },
             title = { Text("删除记录") },
             text = {
+                DialogScrimAdjuster()
                 Text("删除 ${record.timeLabel} 的记录?\n见人 +${record.peopleSeen}  查询 +${record.queries}  成交 +${record.deals}")
             },
             confirmButton = {
@@ -327,7 +335,7 @@ private fun DailyTotalCard(people: Int, queries: Int, deals: Int, recordCount: I
 @Composable
 private fun TotalCell(label: String, value: Int, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("$value", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color)
+        Text("$value", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = accentForDark(color))
         Text(label, style = MaterialTheme.typography.labelSmall)
     }
 }
@@ -384,9 +392,9 @@ private fun ExecutionRecordRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                DeltaCell("见人", "+${record.peopleSeen}", Color(0xFF2196F3))
-                DeltaCell("查询", "+${record.queries}", Color(0xFF9C27B0))
-                DeltaCell("成交", "+${record.deals}", Color(0xFFF44336))
+                DeltaCell("见人", formatDelta(record.peopleSeen), Color(0xFF2196F3))
+                DeltaCell("查询", formatDelta(record.queries), Color(0xFF9C27B0))
+                DeltaCell("成交", formatDelta(record.deals), Color(0xFFF44336))
             }
         }
     }
@@ -406,7 +414,7 @@ private fun PrecisionBadge(precision: String) {
                 .background(Color(0xFFFF9800).copy(alpha = 0.12f))
                 .padding(horizontal = 6.dp, vertical = 2.dp)
         ) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFFE65100))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = accentForDark(Color(0xFFE65100)))
         }
     }
 }
@@ -414,7 +422,7 @@ private fun PrecisionBadge(precision: String) {
 @Composable
 private fun DeltaCell(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = accentForDark(color))
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -430,7 +438,7 @@ private fun EmptyRecordsCard() {
         ) {
             Text("暂无执行记录", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
-            Text("点击下方按钮添加", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+            Text("点击下方按钮添加", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -477,6 +485,7 @@ private fun EditRecordDialog(
         onDismissRequest = onDismiss,
         title = { Text("修改 ${record.timeLabel} 记录") },
         text = {
+            DialogScrimAdjuster()
             Column {
                 OutlinedTextField(
                     value = meetText,

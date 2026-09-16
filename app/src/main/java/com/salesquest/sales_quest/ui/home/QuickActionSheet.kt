@@ -45,16 +45,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.data.DateUtil
+import com.salesquest.sales_quest.services.ExecutionRecordService
 import kotlinx.coroutines.launch
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 /**
- * 每日基础任务数据录入面板 - 直接输入当天实际数值
+ * 每日基础任务数据录入面板 - 填写"当前最新累计值" (需求1 改造)
  *
- * 支持:
- * - 整组输入见人/查询/成交 + 保存
- * - 选择历史日期补录/修改
- * - 已有数据再次编辑
- * - 保存后立即刷新首页/本周折线图
+ * 语义:
+ * - 输入框填的是当天最新累计值, 不是新增量
+ * - 保存时自动计算 差值 = 最新累计 - 当前累计, 差值落一条执行记录
+ * - 差值为负 (下调) 时先弹确认框, 确认后才写入
+ * - 差值全为 0 时不写库
+ * - 今天的数据变化由 ExecutionRecordService 统一触发任务/XP/成就刷新
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,13 +73,31 @@ fun QuickActionSheet(
     var dealText by remember { mutableStateOf(initial.third.toString()) }
     var saving by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var base by remember { mutableStateOf<ExecutionRecordService.DailyCumulative?>(null) }
+    var reloadTick by remember { mutableStateOf(0) }
+    var pendingNegativeDelta by remember { mutableStateOf<ExecutionRecordService.CumulativeDelta?>(null) }
 
-    // 切换日期时加载该日期已有数据
-    LaunchedEffect(selectedDateKey) {
-        val stats = AppContainer.dailyStatsService.getDailyStats(selectedDateKey)
-        meetText = stats.peopleSeen.toString()
-        queryText = stats.queries.toString()
-        dealText = stats.deals.toString()
+    // 切换日期时加载该日期"当前累计值", 并回填为输入初值
+    LaunchedEffect(selectedDateKey, reloadTick) {
+        val loaded = AppContainer.executionRecordService.getDailyCumulative(selectedDateKey)
+        base = loaded
+        meetText = loaded.peopleSeen.toString()
+        queryText = loaded.queries.toString()
+        dealText = loaded.deals.toString()
+    }
+
+    val parsedMeet = meetText.trim().toIntOrNull()
+    val parsedQuery = queryText.trim().toIntOrNull()
+    val parsedDeal = dealText.trim().toIntOrNull()
+    val currentBase = base
+    val deltaPreview = if (currentBase != null && parsedMeet != null && parsedQuery != null && parsedDeal != null) {
+        ExecutionRecordService.CumulativeDelta(
+            peopleSeen = parsedMeet - currentBase.peopleSeen,
+            queries = parsedQuery - currentBase.queries,
+            deals = parsedDeal - currentBase.deals
+        )
+    } else {
+        null
     }
 
     Column(
@@ -103,6 +124,12 @@ fun QuickActionSheet(
                 )
             }
         }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "填写当前最新累计值, 保存后自动计算差值并记入执行记录",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(Modifier.height(12.dp))
 
         // === 日期选择 ===
@@ -122,46 +149,93 @@ fun QuickActionSheet(
         }
         Spacer(Modifier.height(12.dp))
 
-        QuickInputField(meetText, { meetText = it }, "见人数", Icons.Filled.Groups, Color(0xFF2196F3), "人")
+        QuickInputField(meetText, { meetText = it }, "见人数 (最新累计)", Icons.Filled.Groups, Color(0xFF2196F3), "人")
         Spacer(Modifier.height(12.dp))
-        QuickInputField(queryText, { queryText = it }, "查询数", Icons.Filled.Search, Color(0xFF9C27B0), "次")
+        QuickInputField(queryText, { queryText = it }, "查询数 (最新累计)", Icons.Filled.Search, Color(0xFF9C27B0), "次")
         Spacer(Modifier.height(12.dp))
-        QuickInputField(dealText, { dealText = it }, "成交数", Icons.Filled.Celebration, Color(0xFFF44336), "单")
+        QuickInputField(dealText, { dealText = it }, "成交数 (最新累计)", Icons.Filled.Celebration, Color(0xFFF44336), "单")
 
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = {
-                if (saving) return@Button
-                val error = validateDailyEntry(meetText, queryText, dealText)
-                if (error != null) {
-                    scope.launch { snackbarHostState.showSnackbar(error) }
-                    return@Button
-                }
-                saving = true
-                scope.launch {
-                    try {
-                        val meet = meetText.trim().toInt()
-                        val query = queryText.trim().toInt()
-                        val deal = dealText.trim().toInt()
-                        val todayKey = DateUtil.dateKey()
-                        if (selectedDateKey == todayKey) {
-                            // 今天: 先整组写入 (内部 updateDailyStats 校验漏斗), 再统一触发任务/XP/成就
-                            // 避免逐项 setPeopleSeen/setQuery/setDeal 的中间态校验导致下调数据保存失败
-                            AppContainer.dailyStatsService.updateDailyStats(todayKey, meet, query, deal)
-                            AppContainer.quickActionService.refreshAfterDataChange()
+        // === 当前累计 + 本次差值预览 ===
+        val baseInfo = currentBase
+        if (baseInfo != null) {
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "当前累计  见人 ${baseInfo.peopleSeen} · 查询 ${baseInfo.queries} · 成交 ${baseInfo.deals}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        val deltaInfo = deltaPreview
+        if (deltaInfo != null) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                if (deltaInfo.isZero) {
+                    "本次差值: 无变化 (不会产生记录)"
+                } else {
+                    "本次将记录差值: 见人 ${formatDelta(deltaInfo.peopleSeen)} / 查询 ${formatDelta(deltaInfo.queries)} / 成交 ${formatDelta(deltaInfo.deals)}" +
+                        if (deltaInfo.hasNegative) " (含下调)" else ""
+                },
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (deltaInfo.hasNegative) Color(0xFFE65100) else Color(0xFF2E7D32)
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        fun doSave(allowNegative: Boolean) {
+            if (saving) return
+            val error = validateDailyEntry(meetText, queryText, dealText)
+            if (error != null) {
+                scope.launch { snackbarHostState.showSnackbar(error) }
+                return
+            }
+            saving = true
+            scope.launch {
+                try {
+                    val todayKey = DateUtil.dateKey()
+                    val isToday = selectedDateKey == todayKey
+                    val result = AppContainer.executionRecordService.applyCumulativeInput(
+                        dateKey = selectedDateKey,
+                        recordTime = if (isToday) System.currentTimeMillis() else null,
+                        timePrecision = if (isToday) {
+                            ExecutionRecordService.PRECISION_EXACT
                         } else {
-                            // 历史日期: 纯数据补录/修改, 不触发 XP
-                            AppContainer.dailyStatsService.updateDailyStats(selectedDateKey, meet, query, deal)
+                            ExecutionRecordService.PRECISION_DAILY_TOTAL
+                        },
+                        periodLabel = null,
+                        latestPeopleSeen = meetText.trim().toInt(),
+                        latestQueries = queryText.trim().toInt(),
+                        latestDeals = dealText.trim().toInt(),
+                        allowNegative = allowNegative
+                    )
+                    when (result) {
+                        is ExecutionRecordService.CumulativeApplyResult.Saved -> {
+                            // 今天的数据变化已在 service 内触发任务/XP/成就刷新
+                            snackbarHostState.showSnackbar("已保存, 本次差值 ${formatDeltaTriple(result.delta)}")
+                            reloadTick++
+                            onDone()
                         }
-                        snackbarHostState.showSnackbar("已保存")
-                        onDone()
-                    } catch (e: Exception) {
-                        snackbarHostState.showSnackbar("保存失败: ${e.message}")
-                    } finally {
-                        saving = false
+                        is ExecutionRecordService.CumulativeApplyResult.NoChange -> {
+                            snackbarHostState.showSnackbar("数据未变化, 未产生记录")
+                            onDone()
+                        }
+                        is ExecutionRecordService.CumulativeApplyResult.NeedConfirm -> {
+                            pendingNegativeDelta = result.delta
+                        }
                     }
+                } catch (e: IllegalArgumentException) {
+                    snackbarHostState.showSnackbar(e.message ?: "保存失败")
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("保存失败: ${e.message}")
+                } finally {
+                    saving = false
                 }
-            },
+            }
+        }
+
+        Button(
+            onClick = { doSave(false) },
             enabled = !saving,
             modifier = Modifier
                 .fillMaxWidth()
@@ -173,6 +247,32 @@ fun QuickActionSheet(
                 Text("保存", style = MaterialTheme.typography.bodyLarge)
             }
         }
+
+        // === 数值下调确认 ===
+        pendingNegativeDelta?.let { delta ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { pendingNegativeDelta = null },
+                title = { Text("数值下调确认") },
+                text = {
+                    DialogScrimAdjuster()
+                    Text(
+                        "本次录入低于当前累计值, 将记录负差值:\n" +
+                            "见人 ${formatDelta(delta.peopleSeen)} / 查询 ${formatDelta(delta.queries)} / 成交 ${formatDelta(delta.deals)}\n\n" +
+                            "确认后本条记录会立即写入执行记录, 当天累计将同步下调。"
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        pendingNegativeDelta = null
+                        doSave(true)
+                    }) { Text("确认保存") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingNegativeDelta = null }) { Text("取消") }
+                }
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
         SnackbarHost(snackbarHostState)
     }
@@ -184,6 +284,7 @@ fun QuickActionSheet(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
+                DialogScrimAdjuster()
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         selectedDateKey = DateUtil.dateKeyFromUtc(millis)

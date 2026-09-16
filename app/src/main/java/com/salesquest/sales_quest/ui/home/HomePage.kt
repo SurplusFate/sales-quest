@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,14 +26,11 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,15 +61,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.salesquest.sales_quest.core.AppContainer
+import com.salesquest.sales_quest.data.DateUtil
+import com.salesquest.sales_quest.services.ExecutionRecordService
 import com.salesquest.sales_quest.core.AppLevels
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
 import com.salesquest.sales_quest.services.DailyTaskConfig
 import com.salesquest.sales_quest.services.LevelProgress
+import com.salesquest.sales_quest.ui.theme.LocalIsDark
+import com.salesquest.sales_quest.ui.theme.accentForDark
 import com.salesquest.sales_quest.ui.BattleStats
 import com.salesquest.sales_quest.ui.ExecutionRecordUi
-import com.salesquest.sales_quest.ui.HomeUiState
-import com.salesquest.sales_quest.ui.WeekDayStats
 import kotlinx.coroutines.launch
+import com.salesquest.sales_quest.ui.theme.appScrim
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
+import com.salesquest.sales_quest.ui.theme.dockContentBottomPadding
 
 /**
  * 作战首页 - 核心使用闭环: 今日战绩 + 记录数据 + 今日任务
@@ -97,8 +100,9 @@ fun HomePage(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 100.dp)
+                .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = dockContentBottomPadding())
         ) {
             // 等级卡片: 只读取等级相关字段
             LevelSection(
@@ -162,6 +166,7 @@ fun HomePage(
 
     if (showDailyEntry) {
         ModalBottomSheet(
+            scrimColor = appScrim(),
             onDismissRequest = { showDailyEntry = false },
             sheetState = rememberModalBottomSheetState()
         ) {
@@ -171,6 +176,7 @@ fun HomePage(
 
     if (showExecRecordSheet) {
         ModalBottomSheet(
+            scrimColor = appScrim(),
             onDismissRequest = { showExecRecordSheet = false },
             sheetState = rememberModalBottomSheetState()
         ) {
@@ -235,7 +241,17 @@ private fun BattleStatsSection(
             modifier = Modifier.weight(1f),
             onTap = {
                 onEditMetric(EditMetricRequest("见人数", stats.peopleSeen, "人") { v ->
-                    AppContainer.quickActionService.setPeopleSeen(v)
+                    AppContainer.executionRecordService.applyCumulativeInput(
+                        dateKey = DateUtil.dateKey(),
+                        recordTime = System.currentTimeMillis(),
+                        timePrecision = ExecutionRecordService.PRECISION_EXACT,
+                        periodLabel = null,
+                        latestPeopleSeen = v,
+                        latestQueries = stats.queries,
+                        latestDeals = stats.deals,
+                        allowNegative = true
+                    )
+                    Unit
                 })
             }
         )
@@ -248,7 +264,17 @@ private fun BattleStatsSection(
             modifier = Modifier.weight(1f),
             onTap = {
                 onEditMetric(EditMetricRequest("查询数", stats.queries, "次") { v ->
-                    AppContainer.quickActionService.setQuery(v)
+                    AppContainer.executionRecordService.applyCumulativeInput(
+                        dateKey = DateUtil.dateKey(),
+                        recordTime = System.currentTimeMillis(),
+                        timePrecision = ExecutionRecordService.PRECISION_EXACT,
+                        periodLabel = null,
+                        latestPeopleSeen = stats.peopleSeen,
+                        latestQueries = v,
+                        latestDeals = stats.deals,
+                        allowNegative = true
+                    )
+                    Unit
                 })
             }
         )
@@ -261,7 +287,17 @@ private fun BattleStatsSection(
             modifier = Modifier.weight(1f),
             onTap = {
                 onEditMetric(EditMetricRequest("成交数", stats.deals, "单") { v ->
-                    AppContainer.quickActionService.setDeal(v)
+                    AppContainer.executionRecordService.applyCumulativeInput(
+                        dateKey = DateUtil.dateKey(),
+                        recordTime = System.currentTimeMillis(),
+                        timePrecision = ExecutionRecordService.PRECISION_EXACT,
+                        periodLabel = null,
+                        latestPeopleSeen = stats.peopleSeen,
+                        latestQueries = stats.queries,
+                        latestDeals = v,
+                        allowNegative = true
+                    )
+                    Unit
                 })
             }
         )
@@ -333,6 +369,7 @@ internal fun EditMetricDialog(
         onDismissRequest = onDismiss,
         title = { Text("修改 ${request.label}") },
         text = {
+            DialogScrimAdjuster()
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
@@ -376,6 +413,7 @@ fun LevelCard(
     streakDays: Int
 ) {
     val theme = MaterialTheme.colorScheme
+    val isDark = LocalIsDark.current
     val xpInLevel = totalXp - currentLevelXp
     val rawSpan = nextLevelXp - currentLevelXp
     val isMax = rawSpan <= 0
@@ -388,12 +426,21 @@ fun LevelCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        theme.primary.copy(alpha = 0.10f),
-                        theme.tertiary.copy(alpha = 0.08f)
+                if (isDark) {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            theme.surfaceContainerLow,
+                            theme.surfaceContainerHighest.copy(alpha = 0.7f)
+                        )
                     )
-                )
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            theme.primary.copy(alpha = 0.10f),
+                            theme.tertiary.copy(alpha = 0.08f)
+                        )
+                    )
+                }
             )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -423,10 +470,10 @@ fun LevelCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFFF9800).copy(alpha = 0.15f))
+                            .background(if (isDark) Color(0xFFFF9800).copy(alpha = 0.22f) else Color(0xFFFF9800).copy(alpha = 0.15f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text("🔥 $streakDays", style = MaterialTheme.typography.labelSmall, color = Color(0xFFE65100), fontWeight = FontWeight.Bold)
+                        Text("🔥 $streakDays", style = MaterialTheme.typography.labelSmall, color = if (isDark) Color(0xFFFFB74D) else Color(0xFFE65100), fontWeight = FontWeight.Bold)
                     }
                 }
                 Spacer(Modifier.width(8.dp))
@@ -467,13 +514,14 @@ fun EditableStatCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+        val accent = accentForDark(color)
+        Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.height(4.dp))
         Text(
             "$value",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = color
+            color = accent
         )
         Spacer(Modifier.height(2.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -495,18 +543,25 @@ fun TaskRow(
     completed: Boolean
 ) {
     val theme = MaterialTheme.colorScheme
+    val isDark = LocalIsDark.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (completed) Color(0xFF4CAF50).copy(alpha = 0.08f) else theme.surfaceContainerLow)
+            .background(
+                if (completed) {
+                    if (isDark) Color(0xFF1B5E20).copy(alpha = 0.45f) else Color(0xFF4CAF50).copy(alpha = 0.08f)
+                } else {
+                    theme.surfaceContainerLow
+                }
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             if (completed) Icons.Filled.CheckCircle else icon,
             contentDescription = null,
-            tint = if (completed) Color(0xFF4CAF50) else color,
+            tint = if (completed) Color(0xFF4CAF50) else accentForDark(color),
             modifier = Modifier.size(22.dp)
         )
         Spacer(Modifier.width(10.dp))
@@ -640,16 +695,16 @@ private fun ExecutionRecordCompactRow(record: ExecutionRecordUi) {
             modifier = Modifier.width(56.dp)
         )
         // 三个增量数据
-        CompactDelta("+${record.peopleSeen}", "见", Color(0xFF2196F3), Modifier.weight(1f))
-        CompactDelta("+${record.queries}", "查", Color(0xFF9C27B0), Modifier.weight(1f))
-        CompactDelta("+${record.deals}", "成", Color(0xFFF44336), Modifier.weight(1f))
+        CompactDelta(formatDelta(record.peopleSeen), "见", Color(0xFF2196F3), Modifier.weight(1f))
+        CompactDelta(formatDelta(record.queries), "查", Color(0xFF9C27B0), Modifier.weight(1f))
+        CompactDelta(formatDelta(record.deals), "成", Color(0xFFF44336), Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun CompactDelta(value: String, label: String, color: Color, modifier: Modifier = Modifier) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = color)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = accentForDark(color))
         Spacer(Modifier.width(2.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

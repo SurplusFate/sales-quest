@@ -40,15 +40,26 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.salesquest.sales_quest.ui.WeekDayStats
+import com.salesquest.sales_quest.ui.theme.accentForDark
+import com.salesquest.sales_quest.ui.theme.DialogScrimAdjuster
 
 private val MeetColor = Color(0xFF2196F3)
 private val QueryColor = Color(0xFF9C27B0)
 private val DealColor = Color(0xFFF44336)
 
+/** 深色模式下提亮后的系列色, 保证折线/图例/弹窗数值可读 */
+@Composable
+private fun seriesColors(): Triple<Color, Color, Color> = Triple(
+    accentForDark(MeetColor),
+    accentForDark(QueryColor),
+    accentForDark(DealColor)
+)
+
 /** 本周战绩卡片 - 周一至周六见人/查询/成交折线图 (Canvas 手绘, 无第三方图表库) */
 @Composable
 fun WeeklyBattleCard(weekStats: List<WeekDayStats>) {
     var selectedDay by remember { mutableStateOf<WeekDayStats?>(null) }
+    val (meet, query, deal) = seriesColors()
 
     Column(
         modifier = Modifier
@@ -68,10 +79,13 @@ fun WeeklyBattleCard(weekStats: List<WeekDayStats>) {
             onDayClick = { selectedDay = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp)
+                .height(250.dp),
+            meetColor = meet,
+            queryColor = query,
+            dealColor = deal
         )
         Spacer(Modifier.height(8.dp))
-        WeekChartLegend()
+        WeekChartLegend(meet, query, deal)
     }
 
     selectedDay?.let { day ->
@@ -79,12 +93,13 @@ fun WeeklyBattleCard(weekStats: List<WeekDayStats>) {
             onDismissRequest = { selectedDay = null },
             title = { Text("${day.weekday} · ${day.dateLabel}") },
             text = {
+                DialogScrimAdjuster()
                 Column {
-                    LegendRow("见人", day.stats.peopleSeen, MeetColor)
+                    LegendRow("见人", day.stats.peopleSeen, meet)
                     Spacer(Modifier.height(8.dp))
-                    LegendRow("查询", day.stats.queries, QueryColor)
+                    LegendRow("查询", day.stats.queries, query)
                     Spacer(Modifier.height(8.dp))
-                    LegendRow("成交", day.stats.deals, DealColor)
+                    LegendRow("成交", day.stats.deals, deal)
                 }
             },
             confirmButton = {
@@ -96,11 +111,11 @@ fun WeeklyBattleCard(weekStats: List<WeekDayStats>) {
 
 /** 图例 */
 @Composable
-private fun WeekChartLegend() {
+private fun WeekChartLegend(meet: Color, query: Color, deal: Color) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        LegendDot("见人", MeetColor)
-        LegendDot("查询", QueryColor)
-        LegendDot("成交", DealColor)
+        LegendDot("见人", meet)
+        LegendDot("查询", query)
+        LegendDot("成交", deal)
     }
 }
 
@@ -140,7 +155,10 @@ private fun LegendRow(label: String, value: Int, color: Color) {
 private fun WeekLineChart(
     weekStats: List<WeekDayStats>,
     onDayClick: (WeekDayStats) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    meetColor: Color = MeetColor,
+    queryColor: Color = QueryColor,
+    dealColor: Color = DealColor
 ) {
     val textMeasurer = rememberTextMeasurer()
     val axisLabelStyle = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -150,7 +168,7 @@ private fun WeekLineChart(
     val maxValue = (values.maxOfOrNull { listOf(it.stats.peopleSeen, it.stats.queries, it.stats.deals).max() } ?: 0)
         .coerceAtLeast(1)
 
-    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
 
     // 性能优化: 预测量 x 轴标签, 避免在 Canvas draw 阶段重复调用 textMeasurer.measure()
     val dayLabelLayouts = remember(values, dayLabelStyle) {
@@ -232,9 +250,9 @@ private fun WeekLineChart(
                 drawCircle(color = color, radius = 3.dp.toPx(), center = Offset(x, y))
             }
         }
-        drawSeries({ it.stats.peopleSeen }, MeetColor)
-        drawSeries({ it.stats.queries }, QueryColor)
-        drawSeries({ it.stats.deals }, DealColor)
+        drawSeries({ it.stats.peopleSeen }, meetColor)
+        drawSeries({ it.stats.queries }, queryColor)
+        drawSeries({ it.stats.deals }, dealColor)
 
         // x 轴底部标签: 周几 + 日期 (使用预算好的 TextLayout)
         val dayWidth = plotWidth / pointCount
