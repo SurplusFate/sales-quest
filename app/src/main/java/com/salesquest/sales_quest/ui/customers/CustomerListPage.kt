@@ -55,6 +55,7 @@ fun CustomerListPage(
     val customers by viewModel.customers.collectAsState()
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("客户") },
@@ -63,7 +64,7 @@ fun CustomerListPage(
                         Icon(Icons.Filled.PersonAdd, contentDescription = "添加客户")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->

@@ -107,6 +107,7 @@ fun LogViewerPage(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("运行日志") },
@@ -128,7 +129,7 @@ fun LogViewerPage(
                         onClear = { showClearDialog = true }
                     )
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

@@ -98,6 +98,7 @@ fun TaskConfigPage(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("基础任务设置") },
@@ -106,7 +107,7 @@ fun TaskConfigPage(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

@@ -90,6 +90,7 @@ fun ExecutionRecordListPage(
     var deleteRecord by remember { mutableStateOf<ExecutionRecordUi?>(null) }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("执行记录") },
@@ -98,7 +99,7 @@ fun ExecutionRecordListPage(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

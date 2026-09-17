@@ -52,6 +52,7 @@ fun ThemeSettingsPage(onBack: () -> Unit) {
     val currentTheme by ThemeManager.theme.collectAsState()
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("主题设置") },
@@ -60,7 +61,7 @@ fun ThemeSettingsPage(onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->

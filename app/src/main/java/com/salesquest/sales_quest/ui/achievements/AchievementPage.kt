@@ -59,6 +59,7 @@ fun AchievementPage(
     val statuses by viewModel.statuses.collectAsState()
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("成就") },
@@ -67,7 +68,7 @@ fun AchievementPage(
                         Icon(Icons.Filled.Settings, contentDescription = "设置")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->

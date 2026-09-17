@@ -69,6 +69,7 @@ fun CustomerDetailPage(
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(customer?.name ?: "客户详情") },
@@ -82,7 +83,7 @@ fun CustomerDetailPage(
                         Icon(Icons.Filled.Edit, contentDescription = "编辑")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
