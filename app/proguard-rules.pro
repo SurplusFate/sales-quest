@@ -14,3 +14,6 @@
 # --- Room (实体/DAO 由生成代码反射访问) ---
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class * { *; }
+
+# --- errorprone 注解缺失（androidx.security-crypto 依赖的 tink 编译期引用，非运行必需）---
+-dontwarn com.google.errorprone.annotations.**
