@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -142,7 +143,7 @@ fun XpLevelPage(
 @Composable
 fun RequirementCard(progress: LevelProgress) {
     val theme = MaterialTheme.colorScheme
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -198,7 +199,7 @@ fun CurrentLevelCard(
     progress: Double
 ) {
     val theme = MaterialTheme.colorScheme
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

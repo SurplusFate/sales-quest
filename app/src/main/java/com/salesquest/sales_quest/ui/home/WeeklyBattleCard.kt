@@ -2,6 +2,7 @@ package com.salesquest.sales_quest.ui.home
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,7 +66,8 @@ fun WeeklyBattleCard(weekStats: List<WeekDayStats>) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f))
+            .border(1.dp, Color.White.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
         Text(

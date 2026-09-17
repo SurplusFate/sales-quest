@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DatePicker
@@ -111,7 +112,7 @@ fun SummaryPage(
 
             // 数据摘要
             state.snapshot?.let { snap ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
                         Text(
                             "${snap.dateKey} 数据摘要",
@@ -190,7 +191,7 @@ fun SummaryPage(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(8.dp))
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
                         Text("本周 vs 上周", style = MaterialTheme.typography.labelLarge)
                         Spacer(Modifier.height(6.dp))
@@ -272,7 +273,7 @@ private fun HistorySection(history: List<DailySummary>) {
     )
     Spacer(Modifier.height(8.dp))
     history.forEach { summary ->
-        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
             Column(Modifier.padding(12.dp)) {
                 Text(summary.dateKey, style = MaterialTheme.typography.titleSmall)
                 if (summary.good.isNotBlank()) {

@@ -1,6 +1,7 @@
 package com.salesquest.sales_quest.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -280,7 +281,8 @@ fun SettingsListItem(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .clip(shape)
-            .background(theme.surfaceContainerLow)
+            .background(theme.surfaceContainerLow.copy(alpha = 0.55f))
+            .border(1.dp, Color.White.copy(alpha = 0.45f), shape)
             .then(
                 if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
             )

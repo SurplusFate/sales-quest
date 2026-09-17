@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -148,11 +149,11 @@ fun AchievementGridCard(status: AchievementStatus) {
     val def = status.def
     val unlocked = status.unlocked
 
-    val bg = if (unlocked) theme.primaryContainer.copy(alpha = 0.5f) else theme.surfaceContainerLow
+    val bg = if (unlocked) theme.primaryContainer.copy(alpha = 0.5f) else theme.surfaceContainerLow.copy(alpha = 0.55f)
     val titleColor = if (unlocked) theme.onPrimaryContainer else theme.outline
     val descColor = if (unlocked) theme.onSurfaceVariant else theme.outline
 
-    Card(
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), 
         modifier = Modifier
             .fillMaxWidth()
             .height(132.dp)

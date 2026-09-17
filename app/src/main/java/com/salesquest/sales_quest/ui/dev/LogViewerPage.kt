@@ -390,7 +390,7 @@ fun ExportLogDialog(text: String, onDismiss: () -> Unit, onCopy: () -> Unit) {
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFF5F5F5))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f))
                         .padding(8.dp)
                 ) {
                     Text(

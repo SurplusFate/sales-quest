@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -309,7 +310,7 @@ private fun DateSelectorBar(dateKey: String, onClick: () -> Unit) {
 @Composable
 private fun DailyTotalCard(people: Int, queries: Int, deals: Int, recordCount: Int) {
     val theme = MaterialTheme.colorScheme
-    Card(
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), 
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -348,7 +349,7 @@ private fun ExecutionRecordRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), 
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -430,7 +431,7 @@ private fun DeltaCell(label: String, value: String, color: Color) {
 
 @Composable
 private fun EmptyRecordsCard() {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -446,7 +447,7 @@ private fun EmptyRecordsCard() {
 
 @Composable
 private fun DateChip(dateKey: String, isSelected: Boolean, onClick: () -> Unit) {
-    val bg = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow
+    val bg = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)
     val fg = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
     Column(
         modifier = Modifier

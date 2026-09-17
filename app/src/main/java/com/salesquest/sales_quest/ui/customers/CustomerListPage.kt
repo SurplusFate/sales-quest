@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PeopleOutline
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -112,7 +113,7 @@ fun CustomerTile(customer: CustomerEntity, onClick: () -> Unit) {
     val cost = customer.actualCost ?: customer.selfReportedCost
     val initial = if (customer.name.isEmpty()) "?" else customer.name.first().toString()
 
-    Card(
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), 
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()

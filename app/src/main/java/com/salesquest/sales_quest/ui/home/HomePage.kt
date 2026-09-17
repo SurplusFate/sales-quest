@@ -429,8 +429,8 @@ fun LevelCard(
                 if (isDark) {
                     Brush.linearGradient(
                         colors = listOf(
-                            theme.surfaceContainerLow,
-                            theme.surfaceContainerHighest.copy(alpha = 0.7f)
+                            theme.surfaceContainerLow.copy(alpha = 0.55f),
+                            theme.surfaceContainerHighest.copy(alpha = 0.45f)
                         )
                     )
                 } else {
@@ -552,7 +552,7 @@ fun TaskRow(
                 if (completed) {
                     if (isDark) Color(0xFF1B5E20).copy(alpha = 0.45f) else Color(0xFF4CAF50).copy(alpha = 0.08f)
                 } else {
-                    theme.surfaceContainerLow
+                    theme.surfaceContainerLow.copy(alpha = 0.55f)
                 }
             )
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -590,8 +590,8 @@ fun EmptyTaskCard(config: DailyTaskConfig?) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -642,7 +642,7 @@ private fun ExecutionRecordsSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f))
                 .clickable(onClick = onAddRecord)
                 .padding(horizontal = 14.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -682,7 +682,7 @@ private fun ExecutionRecordCompactRow(record: ExecutionRecordUi) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

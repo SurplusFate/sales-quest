@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -149,7 +150,7 @@ fun AnalyticsPage(
             // === 执行记录入口 ===
             SectionTitle("执行记录")
             Spacer(Modifier.height(8.dp))
-            Card(
+            Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), 
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
@@ -190,7 +191,7 @@ fun AnalyticsPage(
             Spacer(Modifier.height(20.dp))
             SectionTitle("总结")
             Spacer(Modifier.height(8.dp))
-            Card(
+            Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), 
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
@@ -352,7 +353,7 @@ fun ExecutionRateCard(rate: Double) {
         else Color(0xFFF44336)
     )
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -469,7 +470,7 @@ fun RateTile(label: String, formula: String, numerator: Int, denominator: Int) {
         subtitle = "$numerator ÷ $denominator"
     }
 
-    Card(
+    Card( colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.55f)), 
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 6.dp)
