@@ -73,9 +73,9 @@ fun ExecutionRecordSheet(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedDateKey by remember { mutableStateOf(initialDateKey) }
-    var meetText by remember { mutableStateOf("0") }
-    var queryText by remember { mutableStateOf("0") }
-    var dealText by remember { mutableStateOf("0") }
+    var meetText by remember { mutableStateOf("") }
+    var queryText by remember { mutableStateOf("") }
+    var dealText by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
 
     // 历史补录参数
@@ -90,13 +90,10 @@ fun ExecutionRecordSheet(
     var reloadTick by remember { mutableStateOf(0) }
     var pendingNegativeDelta by remember { mutableStateOf<ExecutionRecordService.CumulativeDelta?>(null) }
 
-    // 加载该日期"当前累计值"并回填输入框 (累计值录入语义)
+    // 仅加载该日期"当前累计值"用于展示与差值预览, 不回填输入框 (避免残留上次输入)
     LaunchedEffect(selectedDateKey, reloadTick) {
         val loaded = AppContainer.executionRecordService.getDailyCumulative(selectedDateKey)
         base = loaded
-        meetText = loaded.peopleSeen.toString()
-        queryText = loaded.queries.toString()
-        dealText = loaded.deals.toString()
     }
 
     val parsedMeet = meetText.trim().toIntOrNull()
@@ -342,9 +339,12 @@ fun ExecutionRecordSheet(
                     when (result) {
                         is ExecutionRecordService.CumulativeApplyResult.Saved -> {
                             if (isHistorical) {
-                                // 补录模式: 基准刷新为刚录入的最新累计值, 可继续录入
+                                // 补录模式: 基准刷新为刚录入的最新累计值, 可继续录入; 输入框清空避免残留
                                 reloadTick++
                                 addedCount++
+                                meetText = ""
+                                queryText = ""
+                                dealText = ""
                                 snackbarHostState.showSnackbar(
                                     "已保存 (第 $addedCount 条), 本次差值 ${formatDeltaTriple(result.delta)}"
                                 )

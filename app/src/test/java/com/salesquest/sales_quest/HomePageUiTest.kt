@@ -15,7 +15,7 @@ import com.salesquest.sales_quest.core.AppContainer
 import com.salesquest.sales_quest.data.AppDatabase
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.ui.home.HomePage
-import com.salesquest.sales_quest.ui.home.QuickActionSheet
+import com.salesquest.sales_quest.ui.home.ExecutionRecordSheet
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -111,11 +111,11 @@ class HomePageUiTest {
     }
 
     @Test
-    fun 每日基础任务面板应能批量修改三个数据() = runBlocking {
-        composeRule.setContent { QuickActionSheet(onDone = {}) }
+    fun 执行记录面板应能批量修改三个数据() = runBlocking {
+        composeRule.setContent { ExecutionRecordSheet(onDone = {}) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("每日基础任务").assertIsDisplayed()
+        composeRule.onNodeWithText("本次执行记录").assertIsDisplayed()
         composeRule.onNodeWithText("见人数").assertIsDisplayed()
         composeRule.onNodeWithText("查询数").assertIsDisplayed()
         composeRule.onNodeWithText("成交数").assertIsDisplayed()

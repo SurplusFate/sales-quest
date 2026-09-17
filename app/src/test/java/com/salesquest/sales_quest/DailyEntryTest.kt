@@ -8,7 +8,7 @@ import com.salesquest.sales_quest.core.SettingsKeys
 import com.salesquest.sales_quest.data.AppDatabase
 import com.salesquest.sales_quest.data.DateUtil
 import com.salesquest.sales_quest.ui.home.HomeViewModel
-import com.salesquest.sales_quest.ui.home.validateDailyEntry
+import com.salesquest.sales_quest.ui.home.validateExecEntry
 import java.io.File
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -68,7 +68,7 @@ class DailyEntryTest {
     fun 新增数据_输入150_23_5保存成功() = runTest {
         assertNull(db.settingDao().get(SettingsKeys.peopleSeen(todayKey)))
 
-        // 模拟 QuickActionSheet 保存逻辑 (今天走 quickActionService)
+        // 模拟执行记录面板保存逻辑 (今天走 quickActionService)
         AppContainer.quickActionService.setPeopleSeen(150)
         AppContainer.quickActionService.setQuery(23)
         AppContainer.quickActionService.setDeal(5)
@@ -146,36 +146,36 @@ class DailyEntryTest {
 
     @Test
     fun 校验_空值不能保存() {
-        assertNotNull(validateDailyEntry("", "0", "0"))
-        assertNotNull(validateDailyEntry("0", "", "0"))
-        assertNotNull(validateDailyEntry("0", "0", ""))
-        assertNotNull(validateDailyEntry("  ", "0", "0"))
+        assertNotNull(validateExecEntry("", "0", "0"))
+        assertNotNull(validateExecEntry("0", "", "0"))
+        assertNotNull(validateExecEntry("0", "0", ""))
+        assertNotNull(validateExecEntry("  ", "0", "0"))
     }
 
     @Test
     fun 校验_负数被拒绝() {
-        assertEquals("见人不能为负数", validateDailyEntry("-1", "0", "0"))
-        assertEquals("查询不能为负数", validateDailyEntry("0", "-5", "0"))
-        assertEquals("成交不能为负数", validateDailyEntry("0", "0", "-3"))
+        assertEquals("见人不能为负数", validateExecEntry("-1", "0", "0"))
+        assertEquals("查询不能为负数", validateExecEntry("0", "-5", "0"))
+        assertEquals("成交不能为负数", validateExecEntry("0", "0", "-3"))
     }
 
     @Test
     fun 校验_小数被拒绝() {
-        assertEquals("见人只能输入非负整数", validateDailyEntry("12.5", "0", "0"))
-        assertEquals("查询只能输入非负整数", validateDailyEntry("0", "1.5", "0"))
-        assertEquals("成交只能输入非负整数", validateDailyEntry("0", "0", "0.9"))
+        assertEquals("见人只能输入非负整数", validateExecEntry("12.5", "0", "0"))
+        assertEquals("查询只能输入非负整数", validateExecEntry("0", "1.5", "0"))
+        assertEquals("成交只能输入非负整数", validateExecEntry("0", "0", "0.9"))
     }
 
     @Test
     fun 校验_字母被拒绝() {
-        assertEquals("见人只能输入非负整数", validateDailyEntry("abc", "0", "0"))
-        assertEquals("查询只能输入非负整数", validateDailyEntry("0", "x", "0"))
+        assertEquals("见人只能输入非负整数", validateExecEntry("abc", "0", "0"))
+        assertEquals("查询只能输入非负整数", validateExecEntry("0", "x", "0"))
     }
 
     @Test
     fun 校验_0和正常整数合法() {
-        assertNull(validateDailyEntry("0", "0", "0"))
-        assertNull(validateDailyEntry("150", "23", "5"))
+        assertNull(validateExecEntry("0", "0", "0"))
+        assertNull(validateExecEntry("150", "23", "5"))
     }
 
     // ================================================================
@@ -184,23 +184,23 @@ class DailyEntryTest {
 
     @Test
     fun 漏斗校验_查询大于见人_被拒绝() {
-        val error = validateDailyEntry("20", "30", "5")
+        val error = validateExecEntry("20", "30", "5")
         assertNotNull(error)
         assertEquals("查询数不能大于见人数", error)
     }
 
     @Test
     fun 漏斗校验_成交大于查询_被拒绝() {
-        val error = validateDailyEntry("20", "5", "8")
+        val error = validateExecEntry("20", "5", "8")
         assertNotNull(error)
         assertEquals("成交数不能大于查询数", error)
     }
 
     @Test
     fun 漏斗校验_正常漏斗_合法() {
-        assertNull(validateDailyEntry("100", "20", "5"))
-        assertNull(validateDailyEntry("50", "50", "50"))
-        assertNull(validateDailyEntry("100", "0", "0"))
+        assertNull(validateExecEntry("100", "20", "5"))
+        assertNull(validateExecEntry("50", "50", "50"))
+        assertNull(validateExecEntry("100", "0", "0"))
     }
 
     @Test
@@ -234,7 +234,7 @@ class DailyEntryTest {
         AppContainer.quickActionService.setQuery(23)
         AppContainer.quickActionService.setDeal(5)
 
-        val weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll())
+        val weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll().associate { it.key to it.value })
         val today = weekStats.first { it.dateKey == todayKey }
         assertEquals(150, today.stats.peopleSeen)
         assertEquals(23, today.stats.queries)
@@ -249,14 +249,14 @@ class DailyEntryTest {
         AppContainer.dailyStatsService.updateDailyStats(mon, 150, 23, 5)
         AppContainer.dailyStatsService.updateDailyStats(tue, 132, 19, 3)
 
-        var weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll())
+        var weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll().associate { it.key to it.value })
         assertEquals(150, weekStats[0].stats.peopleSeen)
         assertEquals(132, weekStats[1].stats.peopleSeen)
 
         // 修改周二见人 132 -> 145
         AppContainer.dailyStatsService.updateDailyStats(tue, 145, 19, 3)
 
-        weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll())
+        weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll().associate { it.key to it.value })
         assertEquals(145, weekStats[1].stats.peopleSeen)
         assertEquals(150, weekStats[0].stats.peopleSeen)
 

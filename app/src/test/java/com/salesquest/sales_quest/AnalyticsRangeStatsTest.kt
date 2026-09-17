@@ -113,7 +113,7 @@ class AnalyticsRangeStatsTest {
         db.settingDao().setInt(SettingsKeys.deals("2026-08-18"), 1)
 
         val stats = AnalyticsViewModel.sumRange(
-            db.settingDao().getAll(),
+            db.settingDao().getAll().associate { it.key to it.value },
             listOf("2026-08-17", "2026-08-18")
         )
         assertEquals(25, stats.peopleSeen)
@@ -127,7 +127,7 @@ class AnalyticsRangeStatsTest {
         db.settingDao().setInt(SettingsKeys.peopleSeen("2026-08-19"), 30)
 
         val stats = AnalyticsViewModel.sumRange(
-            db.settingDao().getAll(),
+            db.settingDao().getAll().associate { it.key to it.value },
             listOf("2026-08-17", "2026-08-18", "2026-08-19")
         )
         assertEquals(50, stats.peopleSeen)
@@ -138,7 +138,7 @@ class AnalyticsRangeStatsTest {
     @Test
     fun 无任何数据_汇总全为0() {
         val stats = AnalyticsViewModel.sumRange(
-            emptyList(),
+            emptyMap(),
             listOf("2026-08-17", "2026-08-18")
         )
         assertEquals(0, stats.peopleSeen)
@@ -152,7 +152,7 @@ class AnalyticsRangeStatsTest {
         db.settingDao().setInt(SettingsKeys.deals("2026-08-01"), 3)
 
         val stats = AnalyticsViewModel.sumRange(
-            db.settingDao().getAll(),
+            db.settingDao().getAll().associate { it.key to it.value },
             listOf("2026-07-31", "2026-08-01")
         )
         assertEquals(10, stats.peopleSeen)
@@ -166,7 +166,7 @@ class AnalyticsRangeStatsTest {
         db.settingDao().setInt(SettingsKeys.TOTAL_MEETS, 999)
 
         val stats = AnalyticsViewModel.sumRange(
-            db.settingDao().getAll(),
+            db.settingDao().getAll().associate { it.key to it.value },
             listOf("2026-08-17", "2026-08-18")
         )
         assertEquals(20, stats.peopleSeen)

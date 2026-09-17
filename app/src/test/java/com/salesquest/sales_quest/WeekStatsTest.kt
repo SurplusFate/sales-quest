@@ -194,7 +194,7 @@ class WeekStatsTest {
         statsService.updateDailyStats(keys[1], 35, 18, 6)
         statsService.updateDailyStats(keys[3], 42, 21, 7)
 
-        val weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll())
+        val weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll().associate { it.key to it.value })
 
         assertEquals(6, weekStats.size)
         // 周一
@@ -225,13 +225,13 @@ class WeekStatsTest {
         val keys = DateUtil.weekDateKeys()
         statsService.updateDailyStats(keys[0], 10, 5, 2)
 
-        val weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll())
+        val weekStats = HomeViewModel.buildWeekStats(db.settingDao().getAll().associate { it.key to it.value })
         assertEquals(10, weekStats[0].stats.peopleSeen)
 
         // 修改周一数据 (模拟数据分析页改历史数据)
         statsService.updateDailyStats(keys[0], 88, 30, 9)
 
-        val updated = HomeViewModel.buildWeekStats(db.settingDao().getAll())
+        val updated = HomeViewModel.buildWeekStats(db.settingDao().getAll().associate { it.key to it.value })
         assertEquals(88, updated[0].stats.peopleSeen)
         assertEquals(30, updated[0].stats.queries)
         assertEquals(9, updated[0].stats.deals)

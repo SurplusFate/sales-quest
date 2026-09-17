@@ -93,7 +93,6 @@ fun HomePage(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var editMetric by remember { mutableStateOf<EditMetricRequest?>(null) }
-    var showDailyEntry by remember { mutableStateOf(false) }
     var showExecRecordSheet by remember { mutableStateOf(false) }
 
     Box {
@@ -115,7 +114,6 @@ fun HomePage(
             // 今日战绩: 只读取 stats 字段
             BattleStatsSection(
                 stats = state.stats,
-                onRecordData = { showDailyEntry = true },
                 onEditMetric = { req -> editMetric = req }
             )
             Spacer(Modifier.height(16.dp))
@@ -164,16 +162,6 @@ fun HomePage(
         )
     }
 
-    if (showDailyEntry) {
-        ModalBottomSheet(
-            scrimColor = appScrim(),
-            onDismissRequest = { showDailyEntry = false },
-            sheetState = rememberModalBottomSheetState()
-        ) {
-            QuickActionSheet(onDone = { showDailyEntry = false })
-        }
-    }
-
     if (showExecRecordSheet) {
         ModalBottomSheet(
             scrimColor = appScrim(),
@@ -214,7 +202,6 @@ private fun LevelSection(
 @Composable
 private fun BattleStatsSection(
     stats: BattleStats,
-    onRecordData: () -> Unit,
     onEditMetric: (EditMetricRequest) -> Unit
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -225,11 +212,6 @@ private fun BattleStatsSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)
         )
-        TextButton(onClick = onRecordData) {
-            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(4.dp))
-            Text("记录数据", style = MaterialTheme.typography.labelLarge)
-        }
     }
     Spacer(Modifier.height(4.dp))
     Row {
