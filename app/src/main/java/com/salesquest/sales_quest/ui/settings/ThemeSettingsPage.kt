@@ -31,7 +31,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.salesquest.sales_quest.ui.theme.AppTheme
-import com.salesquest.sales_quest.ui.theme.LocalIsDark
 import com.salesquest.sales_quest.ui.theme.ThemeManager
 import com.salesquest.sales_quest.ui.theme.ThemeMode
 
@@ -127,21 +125,6 @@ fun ThemeSettingsPage(onBack: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // === 诊断信息 ===
-            val versionName = remember {
-                runCatching {
-                    context.packageManager.getPackageInfo(context.packageName, 0).versionName
-                }.getOrNull() ?: "?"
-            }
-            val isDark = LocalIsDark.current
-            Text(
-                "诊断: v$versionName | 模式=${currentMode.label} | isDark=$isDark",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
-            )
         }
     }
 }

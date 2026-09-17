@@ -8,6 +8,12 @@ import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 
+/** 线程安全的时间格式化 (SimpleDateFormat 非线程安全, 用 ThreadLocal 隔离避免每次 new) */
+private val timeFormat = object : ThreadLocal<SimpleDateFormat>() {
+    override fun initialValue(): SimpleDateFormat =
+        SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+}
+
 /** 日志级别 */
 enum class LogLevel(val label: String) {
     DEBUG("DEBUG"),
@@ -28,8 +34,7 @@ data class LogEntry(
     val metadata: Map<String, String>? = null
 ) {
     fun toFormattedString(): String {
-        val sdf = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
-        val ts = sdf.format(Date(timestamp))
+        val ts = timeFormat.get().format(Date(timestamp))
         val meta = if (metadata != null && metadata.isNotEmpty()) " | $metadata" else ""
         val st = if (stackTrace != null) "\n  StackTrace:\n$stackTrace" else ""
         return "$ts [${level.label}] $tag: $message$meta$st"
@@ -72,8 +77,12 @@ object AppLogger {
             metadata = metadata
         )
         _entries.add(entry)
-        while (_entries.size > MAX_ENTRIES) {
-            _entries.removeAt(0)
+        // 批量淘汰: 一次移除超量部分, 避免满容量时逐条 removeAt(0) 的 O(n) 反复拷贝
+        val overflow = _entries.size - MAX_ENTRIES
+        if (overflow > 0) {
+            val retained = _entries.subList(overflow, _entries.size).toList()
+            _entries.clear()
+            _entries.addAll(retained)
         }
         when (level) {
             LogLevel.DEBUG -> Log.d(tag, message)

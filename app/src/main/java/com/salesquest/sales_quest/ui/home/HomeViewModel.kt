@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -38,9 +39,13 @@ class HomeViewModel : ViewModel() {
     // 单一 settings 订阅源 (之前 watchAll 被调用 3 次, 每次任意 setting 变化都触发 3 路重新计算)
     private val settingsFlow = db.settingDao().watchAll()
 
-    // 从共享 settingsFlow 派生今日战绩 (仅当数据真正变化时才 emit)
-    private val battleStatsFlow = settingsFlow.map { settings ->
-        val map = settings.associate { it.key to it.value }
+    // 热共享 + 一次解析成 Map: 下游 3 路只触发一次 Room 订阅, settings 变化时也只解析一次
+    private val settingsMapFlow = settingsFlow
+        .map { settings -> settings.associate { it.key to it.value } }
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
+
+    // 从共享 settingsMapFlow 派生今日战绩 (仅当数据真正变化时才 emit)
+    private val battleStatsFlow = settingsMapFlow.map { map ->
         BattleStats(
             peopleSeen = map["people_seen_$todayDateKey"]?.toIntOrNull() ?: 0,
             queries = map["queries_$todayDateKey"]?.toIntOrNull() ?: 0,
@@ -49,8 +54,8 @@ class HomeViewModel : ViewModel() {
     }
 
     /** 本周战绩 (周一~周六, 与数据分析页共用 settings 数据源) */
-    private val weekStatsFlow = settingsFlow.map { settings ->
-        buildWeekStats(settings)
+    private val weekStatsFlow = settingsMapFlow.map { map ->
+        buildWeekStats(map)
     }
 
     /** 今日任务配置响应式数据源: 配置修改 → settings 表 → Flow → 首页自动重组 */
@@ -77,9 +82,8 @@ class HomeViewModel : ViewModel() {
     /** 等级进度: 使用 LevelService 多条件判定 (非纯 XP) */
     private val levelProgressFlow = combine(
         statsFlow,
-        settingsFlow
-    ) { stats, settings ->
-        val map = settings.associate { it.key to it.value }
+        settingsMapFlow
+    ) { stats, map ->
         val totalXp = stats?.totalXp ?: 0
         val totalMeet = map[SettingsKeys.TOTAL_MEETS]?.toIntOrNull() ?: 0
         val totalQuery = map[SettingsKeys.TOTAL_QUERIES]?.toIntOrNull() ?: 0
@@ -140,11 +144,10 @@ class HomeViewModel : ViewModel() {
             deals = deals
         )
         /**
-         * 由 settings 列表组装周一至周六的本周战绩
+         * 由 settings Map 组装周一至周六的本周战绩
          * 与 DailyStatsService 共用同一 settings 数据源, 保证两页数据一致
          */
-        internal fun buildWeekStats(settings: List<com.salesquest.sales_quest.data.entity.SettingEntity>): List<WeekDayStats> {
-            val map = settings.associate { it.key to it.value }
+        internal fun buildWeekStats(map: Map<String, String>): List<WeekDayStats> {
             return DateUtil.weekDateKeys().map { dateKey ->
                 WeekDayStats(
                     dateKey = dateKey,
