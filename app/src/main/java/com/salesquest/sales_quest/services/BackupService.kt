@@ -3,12 +3,9 @@ package com.salesquest.sales_quest.services
 import androidx.room.withTransaction
 import com.salesquest.sales_quest.data.AppDatabase
 import com.salesquest.sales_quest.data.entity.AchievementEntity
-import com.salesquest.sales_quest.data.entity.CustomerEntity
-import com.salesquest.sales_quest.data.entity.CustomerEventEntity
 import com.salesquest.sales_quest.data.entity.DailySummaryEntity
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
 import com.salesquest.sales_quest.data.entity.ExecutionRecordEntity
-import com.salesquest.sales_quest.data.entity.FollowUpEntity
 import com.salesquest.sales_quest.data.entity.LevelRequirementEntity
 import com.salesquest.sales_quest.data.entity.SettingEntity
 import com.salesquest.sales_quest.data.entity.UserStatEntity
@@ -45,10 +42,7 @@ class BackupService(private val db: AppDatabase) {
     suspend fun exportBackupData(): BackupData {
         return BackupData(
             settings = db.settingDao().getAll().map { BackupSetting(it.key, it.value) },
-            customers = db.customerDao().getAll().map { it.toBackup() },
-            customerEvents = db.eventDao().getAll().map { it.toBackup() },
             xpRecords = db.xpDao().getAll().map { it.toBackup() },
-            followUps = db.followUpDao().getAll().map { it.toBackup() },
             dailyTasks = db.taskDao().getAll().map { it.toBackup() },
             userStats = db.statsDao().getStats()?.let { listOf(it.toBackup()) } ?: emptyList(),
             achievements = db.achievementDao().getAll().map { it.toBackup() },
@@ -186,26 +180,15 @@ class BackupService(private val db: AppDatabase) {
 
         db.withTransaction {
             db.settingDao().clearAll()
-            db.customerDao().clearAll()
-            db.eventDao().clearAll()
             db.xpDao().clearAll()
-            db.followUpDao().clearAll()
             db.taskDao().clearAll()
             db.achievementDao().clearAll()
             db.levelRequirementDao().clearAll()
             db.dailySummaryDao().clearAll()
             db.executionRecordDao().clearAll()
 
-            val customerIds = data.customers.map { it.id }.toHashSet()
             data.settings.forEach { db.settingDao().set(SettingEntity(it.key, it.value)) }
-            data.customers.forEach { db.customerDao().insertCustomer(it.toEntity()) }
-            // 引用过滤: 事件/跟进若指向备份中不存在的客户则丢弃
-            // (历史版本曾因删除客户未级联产生孤儿数据, 恢复时不再引入)
-            data.customerEvents.filter { it.customerId in customerIds }
-                .forEach { db.eventDao().insertEvent(it.toEntity()) }
             data.xpRecords.forEach { db.xpDao().insertXp(it.toEntity()) }
-            data.followUps.filter { it.customerId in customerIds }
-                .forEach { db.followUpDao().insertFollowUp(it.toEntity()) }
             data.dailyTasks.forEach { db.taskDao().upsertTask(it.toEntity()) }
             data.userStats.forEach { db.statsDao().insertStats(it.toEntity()) }
             data.achievements.forEach { db.achievementDao().unlock(it.toEntity()) }
@@ -215,7 +198,6 @@ class BackupService(private val db: AppDatabase) {
         }
 
         return RestoreStats(
-            customers = data.customers.size,
             settings = data.settings.size,
             xpRecords = data.xpRecords.size,
             summaries = data.dailySummaries.size
@@ -236,7 +218,6 @@ class BackupService(private val db: AppDatabase) {
 
 /** 恢复统计 */
 data class RestoreStats(
-    val customers: Int = 0,
     val settings: Int = 0,
     val xpRecords: Int = 0,
     val summaries: Int = 0
@@ -244,30 +225,9 @@ data class RestoreStats(
 
 // ==================== 实体映射 ====================
 
-private fun CustomerEntity.toBackup() = BackupCustomer(
-    id = id, name = name, phone = phone, operator = operator,
-    selfReportedCost = selfReportedCost, actualCost = actualCost,
-    packageName = packageName, traffic = traffic, minutes = minutes,
-    broadband = broadband, subCards = subCards, camera = camera,
-    contractStatus = contractStatus, otherBusiness = otherBusiness, status = status,
-    valueScore = valueScore, valueLevel = valueLevel, salesStage = salesStage,
-    nextAction = nextAction, nextFollowUpAt = nextFollowUpAt, note = note,
-    createdAt = createdAt, updatedAt = updatedAt
-)
-
-private fun CustomerEventEntity.toBackup() = BackupCustomerEvent(
-    id = id, customerId = customerId, eventType = eventType,
-    eventTime = eventTime, note = note, metadata = metadata
-)
-
 private fun XpRecordEntity.toBackup() = BackupXpRecord(
     id = id, customerId = customerId, actionType = actionType,
     xp = xp, createdAt = createdAt
-)
-
-private fun FollowUpEntity.toBackup() = BackupFollowUp(
-    id = id, customerId = customerId, scheduledAt = scheduledAt,
-    content = content, completed = completed, completedAt = completedAt, createdAt = createdAt
 )
 
 private fun DailyTaskEntity.toBackup() = BackupDailyTask(
@@ -305,30 +265,9 @@ private fun ExecutionRecordEntity.toBackup() = BackupExecutionRecord(
 
 // ==================== DTO → 实体 ====================
 
-private fun BackupCustomer.toEntity() = CustomerEntity(
-    id = id, name = name, phone = phone, operator = operator,
-    selfReportedCost = selfReportedCost, actualCost = actualCost,
-    packageName = packageName, traffic = traffic, minutes = minutes,
-    broadband = broadband, subCards = subCards, camera = camera,
-    contractStatus = contractStatus, otherBusiness = otherBusiness, status = status,
-    valueScore = valueScore, valueLevel = valueLevel, salesStage = salesStage,
-    nextAction = nextAction, nextFollowUpAt = nextFollowUpAt, note = note,
-    createdAt = createdAt, updatedAt = updatedAt
-)
-
-private fun BackupCustomerEvent.toEntity() = CustomerEventEntity(
-    id = id, customerId = customerId, eventType = eventType,
-    eventTime = eventTime, note = note, metadata = metadata
-)
-
 private fun BackupXpRecord.toEntity() = XpRecordEntity(
     id = id, customerId = customerId, actionType = actionType,
     xp = xp, createdAt = createdAt
-)
-
-private fun BackupFollowUp.toEntity() = FollowUpEntity(
-    id = id, customerId = customerId, scheduledAt = scheduledAt,
-    content = content, completed = completed, completedAt = completedAt, createdAt = createdAt
 )
 
 private fun BackupDailyTask.toEntity() = DailyTaskEntity(

@@ -8,23 +8,17 @@ import androidx.room.migration.Migration
 import androidx.room.withTransaction
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.salesquest.sales_quest.data.dao.AchievementDao
-import com.salesquest.sales_quest.data.dao.CustomerDao
 import com.salesquest.sales_quest.data.dao.DailySummaryDao
-import com.salesquest.sales_quest.data.dao.EventDao
 import com.salesquest.sales_quest.data.dao.ExecutionRecordDao
-import com.salesquest.sales_quest.data.dao.FollowUpDao
 import com.salesquest.sales_quest.data.dao.LevelRequirementDao
 import com.salesquest.sales_quest.data.dao.SettingDao
 import com.salesquest.sales_quest.data.dao.StatsDao
 import com.salesquest.sales_quest.data.dao.TaskDao
 import com.salesquest.sales_quest.data.dao.XpDao
 import com.salesquest.sales_quest.data.entity.AchievementEntity
-import com.salesquest.sales_quest.data.entity.CustomerEntity
-import com.salesquest.sales_quest.data.entity.CustomerEventEntity
 import com.salesquest.sales_quest.data.entity.DailySummaryEntity
 import com.salesquest.sales_quest.data.entity.DailyTaskEntity
 import com.salesquest.sales_quest.data.entity.ExecutionRecordEntity
-import com.salesquest.sales_quest.data.entity.FollowUpEntity
 import com.salesquest.sales_quest.data.entity.LevelRequirementEntity
 import com.salesquest.sales_quest.data.entity.SettingEntity
 import com.salesquest.sales_quest.data.entity.UserStatEntity
@@ -32,10 +26,7 @@ import com.salesquest.sales_quest.data.entity.XpRecordEntity
 
 @Database(
     entities = [
-        CustomerEntity::class,
-        CustomerEventEntity::class,
         XpRecordEntity::class,
-        FollowUpEntity::class,
         DailyTaskEntity::class,
         UserStatEntity::class,
         AchievementEntity::class,
@@ -44,15 +35,12 @@ import com.salesquest.sales_quest.data.entity.XpRecordEntity
         DailySummaryEntity::class,
         ExecutionRecordEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
-    abstract fun customerDao(): CustomerDao
-    abstract fun eventDao(): EventDao
     abstract fun xpDao(): XpDao
-    abstract fun followUpDao(): FollowUpDao
     abstract fun taskDao(): TaskDao
     abstract fun statsDao(): StatsDao
     abstract fun achievementDao(): AchievementDao
@@ -64,10 +52,7 @@ abstract class AppDatabase : RoomDatabase() {
     /** 清空所有数据并重置统计 (设置页-清除所有数据) */
     suspend fun clearAllData() {
         withTransaction {
-            customerDao().clearAll()
-            eventDao().clearAll()
             xpDao().clearAll()
-            followUpDao().clearAll()
             taskDao().clearAll()
             achievementDao().clearAll()
             settingDao().clearAll()
@@ -85,7 +70,7 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION = 4
+        const val VERSION = 5
         const val DB_NAME = "sales_quest.db"
 
         /** v1 → v2: 新增 level_requirements 与 daily_summaries 表 */
@@ -153,9 +138,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v4 → v5: 删除客户相关表 (customers / customer_events / follow_ups) */
+        val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS customers")
+                db.execSQL("DROP TABLE IF EXISTS customer_events")
+                db.execSQL("DROP TABLE IF EXISTS follow_ups")
+            }
+        }
+
         fun build(context: Context): AppDatabase {
             return Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
         }
     }

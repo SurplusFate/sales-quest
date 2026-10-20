@@ -17,9 +17,6 @@ import androidx.navigation.compose.rememberNavController
 import com.salesquest.sales_quest.ui.AppTab
 import com.salesquest.sales_quest.ui.achievements.AchievementPage
 import com.salesquest.sales_quest.ui.achievements.XpLevelPage
-import com.salesquest.sales_quest.ui.customers.CustomerDetailPage
-import com.salesquest.sales_quest.ui.customers.CustomerFormPage
-import com.salesquest.sales_quest.ui.customers.CustomerListPage
 import com.salesquest.sales_quest.ui.data.AnalyticsPage
 import com.salesquest.sales_quest.ui.dev.LogViewerPage
 import com.salesquest.sales_quest.ui.home.HomePage
@@ -48,7 +45,7 @@ fun SalesQuestApp() {
     key(isDark) {
         GlassRoot(
             bottomBar = { contentBackdrop ->
-                // 仅 4 个 tab 路由显示悬浮 DOCK, 全屏路由(设置/详情/总结等)不显示,
+                // 仅底部 tab 路由显示悬浮 DOCK, 全屏路由(设置/详情/总结等)不显示,
                 // 避免悬浮胶囊遮挡全屏页底部内容(对齐 GenshinGachaHelper showBottomBar 判定)。
                 if (currentTab != null) {
                     GlassDock(
@@ -75,17 +72,11 @@ fun SalesQuestApp() {
                 startDestination = "home",
                 modifier = Modifier.fillMaxSize()
             ) {
-                // 底部 4 tab
+                // 底部 tab
                 composable("home") {
                     HomePage(
                         onNavigateToTaskConfig = { navController.navigate("settings/task-config") },
                         onViewAllExecutionRecords = { navController.navigate("execution-records") }
-                    )
-                }
-                composable("customers") {
-                    CustomerListPage(
-                        onAddCustomer = { navController.navigate("customer/new") },
-                        onOpenCustomer = { id -> navController.navigate("customer/$id") }
                     )
                 }
                 composable("data") {
@@ -102,25 +93,6 @@ fun SalesQuestApp() {
                 }
 
                 // 全屏路由
-                composable("customer/new") {
-                    CustomerFormPage(
-                        customerId = null,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-                composable("customer/{id}") { entry ->
-                    CustomerDetailPage(
-                        customerId = entry.arguments?.getString("id") ?: "",
-                        onBack = { navController.popBackStack() },
-                        onEdit = { id -> navController.navigate("customer/$id/edit") }
-                    )
-                }
-                composable("customer/{id}/edit") { entry ->
-                    CustomerFormPage(
-                        customerId = entry.arguments?.getString("id"),
-                        onBack = { navController.popBackStack() }
-                    )
-                }
                 composable("xp") {
                     XpLevelPage(onBack = { navController.popBackStack() })
                 }

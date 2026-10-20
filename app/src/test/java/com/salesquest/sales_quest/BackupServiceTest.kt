@@ -5,7 +5,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.salesquest.sales_quest.core.SettingsKeys
 import com.salesquest.sales_quest.data.AppDatabase
-import com.salesquest.sales_quest.data.entity.CustomerEntity
 import com.salesquest.sales_quest.data.entity.DailySummaryEntity
 import com.salesquest.sales_quest.data.entity.LevelRequirementEntity
 import com.salesquest.sales_quest.data.entity.SettingEntity
@@ -51,9 +50,6 @@ class BackupServiceTest {
     private suspend fun seedData() {
         db.settingDao().set(SettingEntity(SettingsKeys.TOTAL_MEETS, "5"))
         db.settingDao().set(SettingEntity("webdav_test", "hello"))
-        db.customerDao().insertCustomer(
-            CustomerEntity(id = "c1", name = "张三", phone = "13800000000", status = "NEW")
-        )
         db.statsDao().insertStats(
             UserStatEntity(totalXp = 1200, currentLevel = 4, streakDays = 3)
         )
@@ -70,7 +66,6 @@ class BackupServiceTest {
         seedData()
         val data = service.exportBackupData()
         assertEquals(2, data.settings.size)
-        assertEquals(1, data.customers.size)
         assertEquals(1, data.userStats.size)
         assertEquals(1, data.levelRequirements.size)
         assertEquals(1, data.dailySummaries.size)
@@ -86,9 +81,8 @@ class BackupServiceTest {
         val parsed = service.parseBackupZip(zip)
         assertTrue(parsed is BackupValidationResult.Success)
         val backup = (parsed as BackupValidationResult.Success).data
-        assertEquals(1, backup.customers.size)
-        assertEquals("张三", backup.customers.first().name)
         assertEquals(1, backup.dailySummaries.size)
+        assertEquals(1, backup.levelRequirements.size)
     }
 
     @Test
@@ -97,22 +91,19 @@ class BackupServiceTest {
         val data = service.exportBackupData()
         val zip = service.createBackupZip(data)
 
-        // 模拟新库: 清空后写入新数据
+        // 模拟新库: 清空后写入干扰数据
         db.settingDao().clearAll()
-        db.customerDao().clearAll()
         db.settingDao().set(SettingEntity("other", "1"))
-        db.customerDao().insertCustomer(
-            CustomerEntity(id = "new_c", name = "干扰数据")
+        db.dailySummaryDao().upsert(
+            DailySummaryEntity(dateKey = "2026-08-20", good = "干扰")
         )
 
         val parsed = service.parseBackupZip(zip) as BackupValidationResult.Success
         val stats = service.restoreBackupData(parsed.data)
-        assertEquals(1, stats.customers)
         assertEquals(2, stats.settings)
 
-        // 干扰数据应被清除
-        assertEquals(1, db.customerDao().getAll().size)
-        assertEquals("张三", db.customerDao().getAll().first().name)
+        // 干扰数据应被清除, 备份数据应被重建
+        assertEquals(2, db.settingDao().getAll().size)
         assertEquals("5", db.settingDao().get(SettingsKeys.TOTAL_MEETS))
         assertEquals(null, db.settingDao().get("other"))
         assertEquals(1, db.dailySummaryDao().getAll().size)

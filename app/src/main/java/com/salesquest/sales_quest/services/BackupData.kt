@@ -12,10 +12,7 @@ data class BackupData(
     val formatVersion: Int = 1,
     val createdAt: Long = System.currentTimeMillis(),
     val settings: List<BackupSetting> = emptyList(),
-    val customers: List<BackupCustomer> = emptyList(),
-    val customerEvents: List<BackupCustomerEvent> = emptyList(),
     val xpRecords: List<BackupXpRecord> = emptyList(),
-    val followUps: List<BackupFollowUp> = emptyList(),
     val dailyTasks: List<BackupDailyTask> = emptyList(),
     val userStats: List<BackupUserStat> = emptyList(),
     val achievements: List<BackupAchievement> = emptyList(),
@@ -28,60 +25,11 @@ data class BackupData(
 data class BackupSetting(val key: String, val value: String)
 
 @Serializable
-data class BackupCustomer(
-    val id: String,
-    val name: String,
-    val phone: String,
-    val operator: String,
-    val selfReportedCost: Int? = null,
-    val actualCost: Int? = null,
-    val packageName: String? = null,
-    val traffic: String? = null,
-    val minutes: String? = null,
-    val broadband: Boolean = false,
-    val subCards: Int = 0,
-    val camera: Boolean = false,
-    val contractStatus: String? = null,
-    val otherBusiness: String? = null,
-    val status: String,
-    val valueScore: Int = 0,
-    val valueLevel: String,
-    val salesStage: String,
-    val nextAction: String? = null,
-    val nextFollowUpAt: Long? = null,
-    val note: String? = null,
-    val customerNumber: String? = null,
-    val createdAt: Long,
-    val updatedAt: Long
-)
-
-@Serializable
-data class BackupCustomerEvent(
-    val id: String,
-    val customerId: String,
-    val eventType: String,
-    val eventTime: Long,
-    val note: String? = null,
-    val metadata: String? = null
-)
-
-@Serializable
 data class BackupXpRecord(
     val id: String,
     val customerId: String? = null,
     val actionType: String,
     val xp: Int,
-    val createdAt: Long
-)
-
-@Serializable
-data class BackupFollowUp(
-    val id: String,
-    val customerId: String,
-    val scheduledAt: Long,
-    val content: String? = null,
-    val completed: Boolean = false,
-    val completedAt: Long? = null,
     val createdAt: Long
 )
 

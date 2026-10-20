@@ -19,9 +19,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * 底部导航测试 (v1.0.0 - 4 tab, 设置不在底部)
+ * 底部导航测试 (v1.0.0 - 3 tab, 设置不在底部)
  *
- * 底部 tab: 作战 / 客户 / 数据 / 成就
+ * 底部 tab: 作战 / 数据 / 成就
  * 设置通过成就页右上角图标进入
  */
 @RunWith(RobolectricTestRunner::class)
@@ -47,27 +47,15 @@ class NavigationTest {
     }
 
     @Test
-    fun 底部导航应显示四个tab且默认在首页() {
+    fun 底部导航应显示三个tab且默认在首页() {
         composeRule.setContent { SalesQuestApp() }
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("作战").assertIsDisplayed()
-        composeRule.onNodeWithText("客户").assertIsDisplayed()
         composeRule.onNodeWithText("数据").assertIsDisplayed()
         composeRule.onNodeWithText("成就").assertIsDisplayed()
         // 设置不在底部导航
         composeRule.onNodeWithText("今日战绩").assertIsDisplayed()
-    }
-
-    @Test
-    fun 切换到客户tab应显示客户列表() {
-        composeRule.setContent { SalesQuestApp() }
-        composeRule.waitForIdle()
-
-        composeRule.onNode(hasText("客户") and hasClickAction()).performClick()
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithText("还没有客户, 点击右上角添加").assertIsDisplayed()
     }
 
     @Test
@@ -92,19 +80,5 @@ class NavigationTest {
         composeRule.onNodeWithText("数据分析").assertIsDisplayed()
         composeRule.onNodeWithText("总结").assertExists()
         composeRule.onNodeWithText("今日总结 / 周总结").assertExists()
-    }
-
-    @Test
-    fun 重复点击同一tab后导航栈不应堆积页面() {
-        composeRule.setContent { SalesQuestApp() }
-        composeRule.waitForIdle()
-
-        val customersTab = composeRule.onNode(hasText("客户") and hasClickAction())
-        repeat(5) {
-            customersTab.performClick()
-            composeRule.waitForIdle()
-        }
-
-        composeRule.onNodeWithText("还没有客户, 点击右上角添加").assertIsDisplayed()
     }
 }
