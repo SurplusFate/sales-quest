@@ -27,10 +27,24 @@ jobs:
       - name: 授予 gradlew 执行权限
         run: chmod +x ./gradlew
 
-      - name: 写入签名配置 (有密钥时)
-        # 仅在仓库设置了 KEYSTORE_BASE64 / KEYSTORE_PROPERTIES 两个 secret 时写入密钥,
-        # 否则跳过 → 下方会退化为 debug 签名构建, 保证始终能产出可安装 APK。
-        if: ${{ secrets.KEYSTORE_BASE64 != '' && secrets.KEYSTORE_PROPERTIES != '' }}
+      # GitHub Actions 的 step `if` 不允许直接引用 secrets 上下文,
+      # 因此这里用 env 读取 secrets, 再把结论写进 output 供后续 if 使用。
+      - name: 检测是否已配置签名密钥
+        id: keycheck
+        env:
+          KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_PROPERTIES" ] && [ -n "$KEYSTORE_BASE64" ]; then
+            echo "have_key=true" >> "$GITHUB_OUTPUT"
+            echo "==> 检测到签名密钥, 将构建 release 签名包"
+          else
+            echo "have_key=false" >> "$GITHUB_OUTPUT"
+            echo "==> 未配置签名密钥, 将构建 debug 包"
+          fi
+
+      - name: 写入签名配置 (仅已配置密钥时)
+        if: steps.keycheck.outputs.have_key == 'true'
         env:
           KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -40,15 +54,15 @@ jobs:
           echo "解码密钥库到: $STORE_FILE"
           echo "$KEYSTORE_BASE64" | base64 -d > "$STORE_FILE"
 
-      - name: 构建 Release (有密钥) 或 Debug (无密钥)
+      - name: 构建 APK
         env:
-          HAVE_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' && secrets.KEYSTORE_PROPERTIES != '' }}
+          HAVE_KEY: ${{ steps.keycheck.outputs.have_key }}
         run: |
-          if [ "$HAVE_KEYSTORE" = "true" ]; then
+          if [ "$HAVE_KEY" = "true" ]; then
             echo "==> 使用 release 签名构建"
             ./gradlew assembleRelease --no-daemon
           else
-            echo "==> 未配置密钥, 使用 debug 签名构建"
+            echo "==> 使用 debug 签名构建"
             ./gradlew assembleDebug --no-daemon
           fi
 
@@ -74,7 +88,7 @@ jobs:
           if-no-files-found: error
 
       - name: 上传混淆映射 (仅 release)
-        if: ${{ steps.artifacts.outputs.mapping != '' }}
+        if: steps.artifacts.outputs.mapping != ''
         uses: actions/upload-artifact@v4
         with:
           name: mapping.txt
