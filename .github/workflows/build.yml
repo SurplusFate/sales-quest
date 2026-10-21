@@ -18,11 +18,26 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: 设置 Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 安装 SDK 平台 (compileSdk 36)
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+      # 不使用 android-actions/setup-android: 它在新 runner 镜像上会因预装
+      # cmdline-tools 版本不符而执行已移除的 `sdkmanager tools` 并报错。
+      # ubuntu-latest 已预装 Android SDK, 直接用其 sdkmanager 装所需包即可。
+      - name: 准备 Android SDK
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          which sdkmanager || true
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          # 逐项安装并容忍个别包名差异; AGP 默认会自动补装缺失组件
+          sdkmanager "platform-tools" || true
+          sdkmanager "platforms;android-36" || true
+          sdkmanager "build-tools;36.0.0" || true
+          sdkmanager "build-tools;35.0.0" || true
+          echo "--- 已安装组件 ---"
+          sdkmanager --list_installed | head -40 || true
+          # 确保 Gradle 能找到 SDK
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: 授予 gradlew 执行权限
         run: chmod +x ./gradlew
@@ -60,10 +75,10 @@ jobs:
         run: |
           if [ "$HAVE_KEY" = "true" ]; then
             echo "==> 使用 release 签名构建"
-            ./gradlew assembleRelease --no-daemon
+            ./gradlew assembleRelease --no-daemon --stacktrace
           else
             echo "==> 使用 debug 签名构建"
-            ./gradlew assembleDebug --no-daemon
+            ./gradlew assembleDebug --no-daemon --stacktrace
           fi
 
       - name: 收集产物路径
