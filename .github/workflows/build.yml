@@ -8,9 +8,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 创建 GitHub Release 需要
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+
+      - name: 提取版本号
+        id: version
+        run: |
+          VER=$(grep 'versionName = ' app/build.gradle.kts | head -1 | sed -E 's/.*versionName = "([^"]+)".*/\1/')
+          CODE=$(grep 'versionCode = ' app/build.gradle.kts | head -1 | sed -E 's/.*versionCode = ([0-9]+).*/\1/')
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "==> v$VER (build $CODE)"
 
       - name: 设置 JDK 17
         uses: actions/setup-java@v4
@@ -108,3 +119,43 @@ jobs:
         with:
           name: mapping.txt
           path: ${{ steps.artifacts.outputs.mapping }}
+
+      # 版本号在 build.gradle.kts 中升过才发新 Release, 避免每次 push 都发重复版本
+      - name: 检查版本是否已发布
+        id: newver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ steps.version.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/$REPO/git/ref/tags/$TAG")
+          if [ "$HTTP" = "200" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "==> 标签 $TAG 已存在, 跳过发 Release (请先在 build.gradle.kts 升 versionName)"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "==> 标签 $TAG 不存在, 将发布新 Release"
+          fi
+
+      - name: 重命名 APK 为发布文件名
+        if: steps.newver.outputs.published == 'false'
+        run: |
+          cp "${{ steps.artifacts.outputs.apk }}" "sales-quest-v${{ steps.version.outputs.version }}-release.apk"
+
+      - name: 发布 GitHub Release
+        if: steps.newver.outputs.published == 'false' && steps.keycheck.outputs.have_key == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }} - 删除客户模块 + 精简数据层
+          body: |
+            自动构建于 commit ${{ github.sha }} (build ${{ steps.version.outputs.code }})
+
+            ## 更新内容
+            - 删除客户标签页及全部客户功能（页面/DAO/实体/路由/备份字段）
+            - 数据库 v4→v5 迁移（自动删除 customers / customer_events / follow_ups 表，已有数据不受影响）
+            - 保留核心见人→查询→成交漏斗与 XP/等级/成就体系
+          files: |
+            sales-quest-v${{ steps.version.outputs.version }}-release.apk
+          draft: false
+          prerelease: false
